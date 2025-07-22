@@ -18,6 +18,12 @@ export default function StartPage() {
     sector: searchParams.get("branche") || "Unbekannt",
   }
 
+  // Diese Funktion sorgt dafür, dass alle URL-Parameter an die nächste Seite weitergegeben werden
+  const handleContinue = () => {
+    const params = new URLSearchParams(searchParams);
+    router.push(`/preparation?${params.toString()}`);
+  }
+
   const steps = [
     {
       id: 1,
@@ -190,7 +196,7 @@ export default function StartPage() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
-            onClick={() => router.push("/preparation")}
+            onClick={handleContinue}
             className="bg-brand-gold hover:bg-yellow-500 text-black font-medium px-8 py-3"
             size="lg"
           >

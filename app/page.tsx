@@ -67,22 +67,29 @@ function AppView() {
     }
   }, [currentView]);
 
+  // handleTypeformSubmit ruft jetzt die neue API-Route auf
   const handleTypeformSubmit = async (payload: { responseId: string }) => {
     setIsLoading(true);
 
     try {
-      const apiResponse = await fetch(`/api/get-response-data?responseId=${payload.responseId}`);
+      const apiResponse = await fetch(`/api/create-application`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ responseId: payload.responseId })
+      });
+
       if (!apiResponse.ok) {
-        throw new Error('Fehler beim Abrufen der Antwortdaten vom Server');
+        throw new Error('Fehler beim Erstellen der Bewerbung auf dem Server');
       }
       
-      const data = await apiResponse.json();
-      // Assume data.applicationId is returned from the API
+      // Die API gibt den kompletten neuen Eintrag inkl. ID zurück
+      const newApplicationData = await apiResponse.json(); 
+
       const queryParams = new URLSearchParams({
-        name: data.name || '',
-        startup: data.startup || '',
-        branche: data.branche || '',
-        applicationId: data.id || '',
+        name: newApplicationData.name || '',
+        startup: newApplicationData.startup || '',
+        branche: newApplicationData.branche || '',
+        applicationId: newApplicationData.id.toString(), // Die ID kommt direkt von unserer API!
       }).toString();
 
       router.push(`/start?${queryParams}`);
@@ -101,7 +108,7 @@ function AppView() {
       
       <div ref={typeformRef} className={`w-full h-screen ${currentView === 'typeform' ? 'block' : 'hidden'}`}>
         <Widget
-          id="yYh3nt7W"
+          id="yYh3nt7W" // Deine Typeform ID
           style={{ width: "100%", height: "100%" }}
           onSubmit={handleTypeformSubmit}
         />

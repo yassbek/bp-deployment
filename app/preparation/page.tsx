@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +10,7 @@ import { CheckCircle, Lightbulb, Target, Users, Cog, ArrowRight, Info } from "lu
 
 export default function PreparationPage() {
   const router = useRouter()
+  const searchParams = useSearchParams();
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({})
   const [isReady, setIsReady] = useState(false)
 
@@ -62,10 +63,14 @@ export default function PreparationPage() {
   const handleCheckboxChange = (index: number, checked: boolean) => {
     const newCheckedItems = { ...checkedItems, [index]: checked }
     setCheckedItems(newCheckedItems)
-
-    // Check if all items are checked
     const allChecked = preparationChecklist.every((_, i) => newCheckedItems[i])
     setIsReady(allChecked)
+  }
+  
+  // Diese Funktion sorgt dafür, dass alle URL-Parameter an die Interview-Seite weitergegeben werden
+  const handleStartInterview = () => {
+    const params = new URLSearchParams(searchParams);
+    router.push(`/interview?${params.toString()}`);
   }
 
   return (
@@ -232,7 +237,7 @@ export default function PreparationPage() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
-            onClick={() => router.push("/interview")}
+            onClick={handleStartInterview}
             disabled={!isReady}
             className="bg-brand-gold hover:bg-yellow-500 text-black font-medium px-8 py-3"
             size="lg"

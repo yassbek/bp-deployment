@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image";
+import { useConversation } from "@elevenlabs/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,12 +16,12 @@ import {
   User,
   Sparkles,
 } from "lucide-react"
-import { useConversation } from "@elevenlabs/react"
-import Image from "next/image";
-import { useSearchParams } from "next/navigation"
 
 export default function InterviewPage() {
   const router = useRouter()
+  const searchParams = useSearchParams();
+  const applicationId = searchParams.get("applicationId");
+
   const [isConnected, setIsConnected] = useState(false)
   const [isMuted] = useState(false)
   const [isCameraOff] = useState(false)
@@ -30,40 +32,32 @@ export default function InterviewPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([])
-  const [interviewStartedAt, setInterviewStartedAt] = useState<Date | null>(null)
-  const [interviewEndedAt, setInterviewEndedAt] = useState<Date | null>(null)
-  const searchParams = useSearchParams();
-  const applicationId = searchParams.get("applicationId");
 
-  // Helper: Append message to transcript
+  useEffect(() => {
+    console.log("Interview Page loaded. Application ID from URL:", applicationId);
+    if (!applicationId) {
+      console.error("FEHLER: Es wurde keine applicationId in der URL gefunden! Das Transkript kann nicht gespeichert werden.");
+    }
+  }, [applicationId]);
+
+
   const appendToTranscript = useCallback((role: "user" | "ai", text: string) => {
     setTranscript((prev) => [...prev, { role, text, timestamp: new Date().toISOString() }])
   }, [])
 
-  // ElevenLabs conversation hook
   const conversation = useConversation({
     onConnect: () => {
       setIsConnected(true)
       setConnecting(false)
       setConnectionError(null)
-      setInterviewStartedAt(new Date())
     },
     onDisconnect: () => {
       setIsConnected(false)
       setConnecting(false)
     },
     onMessage: (message) => {
-      if (typeof message === "string") {
-        appendToTranscript("ai", message)
-      } else if (typeof message === "object" && message !== null) {
-        if (typeof message.message === "string") {
-          appendToTranscript("ai", message.message)
-        } else if (typeof message.text === "string") {
-          appendToTranscript("ai", message.text)
-        } else {
-          appendToTranscript("ai", JSON.stringify(message))
-        }
-      }
+        const text = message?.text ?? JSON.stringify(message);
+        appendToTranscript("ai", text);
     },
     onError: (error) => {
       setConnectionError(error?.message || "Unknown error")
@@ -71,14 +65,13 @@ export default function InterviewPage() {
     },
   })
 
-  // Camera/mic permission and video setup
   useEffect(() => {
     let didCancel = false
     async function setupCamera() {
       setPermissionError(null)
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
-          setPermissionError("Camera/microphone not supported in this browser.")
+          setPermissionError("Kamera/Mikrofon wird in diesem Browser nicht unterstützt.")
           setHasPermissions(false)
           return
         }
@@ -90,7 +83,7 @@ export default function InterviewPage() {
           videoRef.current.srcObject = mediaStream
         }
       } catch (error: any) {
-        setPermissionError("Failed to get camera/microphone permissions.")
+        setPermissionError("Kamera-/Mikrofonberechtigungen konnten nicht abgerufen werden.")
         setHasPermissions(false)
       }
     }
@@ -103,63 +96,92 @@ export default function InterviewPage() {
     }
   }, [])
 
-  // Start interview (agent connection)
   const startInterview = async () => {
     setConnectionError(null)
     if (!hasPermissions) {
-      setPermissionError("Camera/microphone permissions required.")
+      setPermissionError("Kamera-/Mikrofonberechtigungen sind erforderlich.")
       return
     }
     setConnecting(true)
     try {
       await conversation.startSession({
-        agentId: "nIUEIdEBk48Ul9rgT1Fp", // ElevenLabs agent ID
+        agentId: "nIUEIdEBk48Ul9rgT1Fp", // Deine ElevenLabs Agent ID
       })
-      // Interview start time is set in onConnect
     } catch (error: any) {
-      setConnectionError(error?.message || "Failed to start interview.")
+      setConnectionError(error?.message || "Interview konnte nicht gestartet werden.")
       setConnecting(false)
     }
   }
 
-  // End interview: end session, send transcript to Directus, then navigate
-  const endInterview = async () => {
-    setInterviewEndedAt(new Date())
-    await conversation.endSession()
-    try {
-      await sendTranscriptToDirectus()
-    } catch (err) {
-      // Optionally handle/report error
-    }
-    setTimeout(() => {
-      router.push("/completion")
-    }, 2000)
-  }
-
-  // Send transcript to Directus
+  // sendTranscriptToDirectus sendet jetzt NUR noch das Transkript.
   const sendTranscriptToDirectus = async () => {
-    if (!transcript.length || !applicationId) return;
-    const url = process.env.NEXT_PUBLIC_DIRECTUS_URL + `/items/applications/${applicationId}`;
+    console.log("sendTranscriptToDirectus aufgerufen...");
+
+    if (!applicationId) {
+      console.error("Directus Fehler: Keine Application ID vorhanden. Abbruch.");
+      alert("Fehler: Die Bewerbungs-ID fehlt. Das Transkript kann nicht gespeichert werden.");
+      return;
+    }
+
+    if (transcript.length === 0) {
+      console.warn("Directus Info: Transkript ist leer, es wird nichts gesendet.");
+      return;
+    }
+
+    const url = `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/items/applications/${applicationId}`;
     const token = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
+
+    if (!token) {
+        console.error("Directus Fehler: NEXT_PUBLIC_DIRECTUS_TOKEN ist nicht gesetzt!");
+        alert("Fehler: Der Directus-Token ist nicht konfiguriert.");
+        return;
+    }
+
+    // Das ist jetzt der Payload - nur noch das Transkript.
     const payload = {
-      transcript,
-      started_at: interviewStartedAt?.toISOString() || null,
-      ended_at: interviewEndedAt?.toISOString() || new Date().toISOString(),
-      // Optionally add user/session info here
+      transcript: transcript,
     };
-    await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+
+    console.log("Sende an Directus-URL:", url);
+    console.log("Mit vereinfachtem Payload:", JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("Directus API Fehler! Status:", response.status);
+        console.error("Antwort von Directus:", responseData);
+        alert(`Fehler beim Speichern des Transkripts: ${responseData.errors?.[0]?.message || 'Unbekannter Fehler'}`);
+      } else {
+        console.log("Erfolgreich an Directus gesendet! Antwort:", responseData);
+      }
+    } catch (err) {
+      console.error("Netzwerkfehler beim Senden an Directus:", err);
+      alert("Ein Netzwerkfehler ist aufgetreten. Bitte überprüfe deine Verbindung und die Konsole.");
+    }
   }
 
-  // User message sending (if you want to allow user text input, add here)
-  // Example: appendToTranscript("user", userMessage)
-
+  // endInterview ruft sendTranscriptToDirectus ohne Parameter auf.
+  const endInterview = async () => {
+    console.log("endInterview aufgerufen.");
+    await conversation.endSession();
+    
+    // Wir warten kurz, damit der State sicher aktuell ist.
+    setTimeout(async () => {
+        await sendTranscriptToDirectus();
+        router.push("/completion");
+    }, 100);
+  };
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -168,10 +190,8 @@ export default function InterviewPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-3">
-                {/* Replace Sparkles icon and text with logo */}
                 <Image src="/impactfactory_logo.png" alt="Impact Factory Logo" height={40} width={160} className="h-10 w-auto" />
                 <div>
-                  {/* Optionally, you can keep the subtitle below the logo */}
                   <p className="text-sm text-gray-600">AI-Powered Readiness Assessment</p>
                 </div>
               </div>
@@ -193,25 +213,24 @@ export default function InterviewPage() {
         </div>
       </header>
 
-      {/* Main Interview Area */}
+      {/* Hauptbereich */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="space-y-8">
-          {/* Interview Status */}
           <div className="text-center">
             <h2 className="text-3xl font-bold text-black mb-2">
-              {isConnected ? "Interview in Progress" : "Ready to Begin Your Interview"}
+              {isConnected ? "Interview läuft" : "Bereit für dein Interview"}
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               {isConnected
-                ? "You're now connected with our AI interviewer. Speak naturally and answer questions about your startup's readiness."
-                : "Click 'Start Interview' when you're ready to begin your conversation with our AI interviewer."}
+                ? "Du bist jetzt mit unserem KI-Interviewer verbunden. Sprich natürlich und beantworte die Fragen zur Bereitschaft deines Startups."
+                : "Klicke auf 'Interview starten', wenn du bereit bist, das Gespräch mit unserem KI-Interviewer zu beginnen."}
             </p>
           </div>
 
-          {/* Video Section */}
+          {/* Videobereich */}
           <div className="max-w-5xl mx-auto">
             <div className="grid md:grid-cols-2 gap-8">
-              {/* User Video */}
+              {/* Dein Video */}
               <Card className="overflow-hidden border-2 border-gray-200 shadow-lg">
                 <CardContent className="p-0 relative">
                   <div className="aspect-video bg-gray-50">
@@ -224,24 +243,20 @@ export default function InterviewPage() {
                             <User className="w-10 h-10 text-gray-400" />
                           </div>
                           <p className="text-gray-600 font-medium">
-                            {!hasPermissions ? "Camera Access Required" : "Camera Off"}
+                            {!hasPermissions ? "Kamerazugriff erforderlich" : "Kamera aus"}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            {!hasPermissions ? "Please allow camera access to continue" : "Enable camera to be visible"}
+                            {!hasPermissions ? "Bitte erlaube den Kamerazugriff" : "Aktiviere die Kamera"}
                           </p>
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* User Label */}
                   <div className="absolute bottom-4 left-4">
                     <div className="bg-black bg-opacity-75 px-3 py-1 rounded-full">
-                      <span className="text-white text-sm font-medium">You</span>
+                      <span className="text-white text-sm font-medium">Du</span>
                     </div>
                   </div>
-
-                  {/* Mute Indicator */}
                   {isMuted && (
                     <div className="absolute top-4 right-4">
                       <div className="bg-red-500 p-2 rounded-full shadow-lg">
@@ -252,7 +267,7 @@ export default function InterviewPage() {
                 </CardContent>
               </Card>
 
-              {/* AI Agent */}
+              {/* KI-Agent */}
               <Card className="overflow-hidden border-2 border-brand-gold shadow-lg">
                 <CardContent className="p-0 relative">
                   <div className="aspect-video bg-gradient-to-br from-brand-gold via-yellow-400 to-yellow-500 flex items-center justify-center">
@@ -260,7 +275,7 @@ export default function InterviewPage() {
                       <div className="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
                         <MessageSquare className="w-12 h-12 text-white" />
                       </div>
-                      <h3 className="text-white font-bold text-xl mb-1">AI Interviewer</h3>
+                      <h3 className="text-white font-bold text-xl mb-1">KI Interviewer</h3>
                       <p className="text-white text-sm opacity-90">Impact Factory Assessment</p>
                       {conversation.isSpeaking && (
                         <div className="mt-3 flex items-center justify-center space-x-1">
@@ -277,15 +292,11 @@ export default function InterviewPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* AI Label */}
                   <div className="absolute bottom-4 left-4">
                     <div className="bg-black bg-opacity-75 px-3 py-1 rounded-full">
-                      <span className="text-white text-sm font-medium">AI Agent</span>
+                      <span className="text-white text-sm font-medium">KI Agent</span>
                     </div>
                   </div>
-
-                  {/* Speaking Indicator */}
                   {conversation.isSpeaking && (
                     <div className="absolute top-4 right-4">
                       <div className="bg-green-500 p-2 rounded-full shadow-lg animate-pulse">
@@ -298,9 +309,8 @@ export default function InterviewPage() {
             </div>
           </div>
 
-          {/* Controls */}
+          {/* Steuerung */}
           <div className="flex items-center justify-center py-8">
-            {/* Main Action Button Only, Centered */}
             {!isConnected ? (
               <Button
                 onClick={startInterview}
@@ -308,7 +318,7 @@ export default function InterviewPage() {
                 className="bg-brand-gold hover:bg-yellow-500 text-black font-bold px-8 py-4 text-lg rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
               >
                 <Phone className="w-5 h-5 mr-3" />
-                Start Interview
+                Interview starten
               </Button>
             ) : (
               <Button
@@ -316,29 +326,12 @@ export default function InterviewPage() {
                 className="bg-red-500 hover:bg-red-600 text-white font-bold px-8 py-4 text-lg rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
               >
                 <PhoneOff className="w-5 h-5 mr-3" />
-                End Interview
+                Interview beenden
               </Button>
             )}
           </div>
 
-          {/* Status Message */}
-          {isConnected && (
-            <div className="mt-8 text-center">
-              <div className="inline-flex items-center space-x-3 bg-green-50 px-6 py-3 rounded-full border border-green-200">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-green-700 font-medium">Interview in progress - Speak naturally</span>
-              </div>
-            </div>
-          )}
-          {!hasPermissions && (
-            <div className="mt-8 text-center">
-              <div className="inline-flex items-center space-x-3 bg-yellow-50 px-6 py-3 rounded-full border border-yellow-200">
-                <span className="text-yellow-700 font-medium">
-                  Camera and microphone access required to continue
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Statusmeldungen */}
           {permissionError && (
             <div className="mt-8 text-center">
               <div className="inline-flex items-center space-x-3 bg-red-50 px-6 py-3 rounded-full border border-red-200">
@@ -351,46 +344,6 @@ export default function InterviewPage() {
               <div className="inline-flex items-center space-x-3 bg-red-50 px-6 py-3 rounded-full border border-red-200">
                 <span className="text-red-700 font-medium">{connectionError}</span>
               </div>
-            </div>
-          )}
-
-          {/* Interview Tips */}
-          {!isConnected && (
-            <div className="max-w-4xl mx-auto">
-              <Card className="border border-gray-200 bg-gray-50">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-black mb-4 text-center">Interview Tips</h3>
-                  <div className="grid md:grid-cols-3 gap-6 text-sm">
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
-                        <MessageSquare className="w-6 h-6 text-black" />
-                      </div>
-                      <h4 className="font-medium text-black mb-2">Speak Clearly</h4>
-                      <p className="text-gray-600">
-                        Answer questions naturally and clearly. The AI will assess your responses in real-time.
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Sparkles className="w-6 h-6 text-black" />
-                      </div>
-                      <h4 className="font-medium text-black mb-2">Be Authentic</h4>
-                      <p className="text-gray-600">
-                        Share genuine insights about your startup, team, and vision for impact.
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
-                        <User className="w-6 h-6 text-black" />
-                      </div>
-                      <h4 className="font-medium text-black mb-2">Stay Focused</h4>
-                      <p className="text-gray-600">
-                        The interview covers technology, team, and impact readiness. Stay engaged throughout.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
         </div>
