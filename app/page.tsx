@@ -67,13 +67,27 @@ function AppView() {
     }
   }, [currentView]);
 
-  const handleTypeformSubmit = async () => {
+  const handleTypeformSubmit = async (payload: { responseId: string }) => {
     setIsLoading(true);
+
     try {
-      // Optionally, you can call your API here if needed
-      // await fetch('/api/getResponse', ...)
-      router.push("/start");
-    } finally {
+      const apiResponse = await fetch(`/api/get-response-data?responseId=${payload.responseId}`);
+      if (!apiResponse.ok) {
+        throw new Error('Fehler beim Abrufen der Antwortdaten vom Server');
+      }
+      
+      const data = await apiResponse.json();
+      const queryParams = new URLSearchParams({
+        name: data.name || '',
+        startup: data.startup || '',
+        branche: data.branche || '',
+      }).toString();
+
+      router.push(`/start?${queryParams}`);
+
+    } catch (error) {
+      console.error("Fehler bei der Verarbeitung der Typeform-Antwort:", error);
+      alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
       setIsLoading(false);
     }
   };
@@ -82,9 +96,10 @@ function AppView() {
     <div className="relative w-full min-h-screen bg-[#FDFCF7]">
       {isLoading && <LoadingOverlay text="Analysiere Einreichung" />}
       {currentView === 'landing' && <LandingPage onStartClick={handleStartClick} />}
+      
       <div ref={typeformRef} className={`w-full h-screen ${currentView === 'typeform' ? 'block' : 'hidden'}`}>
         <Widget
-          id="yYh3nt7W" // Deine Formular-ID
+          id="yYh3nt7W"
           style={{ width: "100%", height: "100%" }}
           onSubmit={handleTypeformSubmit}
         />

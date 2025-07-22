@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,12 +9,14 @@ import { CheckCircle, Clock, User, MessageSquare, Camera, Mic } from "lucide-rea
 
 export default function StartPage() {
   const router = useRouter()
-  const [userInfo] = useState({
-    name: "Alex Schmidt",
-    email: "alex.schmidt@example.com",
-    company: "EcoTech Solutions",
-    sector: "Klimaschutz & erneuerbare Energien",
-  })
+  const searchParams = useSearchParams();
+  
+  // Daten aus den URL-Parametern auslesen statt Hardcoding
+  const userInfo = {
+    name: searchParams.get("name") || "Bewerber*in",
+    company: searchParams.get("startup") || "Dein Startup",
+    sector: searchParams.get("branche") || "Unbekannt",
+  }
 
   const steps = [
     {
