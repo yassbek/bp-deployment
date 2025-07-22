@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       umsatz_letztes_jahr: findAnswerByRef('93585c9a-3656-4e29-a237-c32cda3c4a2a')?.number,
       umsatz_seit_beginn: findAnswerByRef('9e76759c-b014-45e7-a287-28e73360fa8b')?.number,
       // HIER IST DIE UMWANDLUNG: Sende 1 für true, 0 for false
-      aktuelle_kunden_bool: hatAktuelleKunden === true ? 1 : 0,
+      aktuelle_kunden_bool: hatAktuelleKunden === true ? '1' : '0',
       aktuelle_kunden_int: findAnswerByRef('10ef9245-71f7-4f67-941a-90f9f5324821')?.number,
       branche: directusBrancheValue,
       mind_3_fte: hatMindestens3FTE,
