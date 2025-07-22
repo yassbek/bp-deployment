@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,50 +15,51 @@ export default function PreparationPage() {
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({})
   const [isReady, setIsReady] = useState(false)
 
+  // ... (restlicher Code bleibt unverändert)
   const readinessAreas = [
     {
       icon: Cog,
-      title: "Technology Readiness",
-      description: "Your product development and technical maturity",
+      title: "Technologie-Reife",
+      description: "Eure Produktentwicklung und technische Reife",
       topics: [
-        "Current development stage (MVP, prototype, market-ready)",
-        "Technical challenges and how you've solved them",
-        "Scalability of your technical solution",
-        "Intellectual property and patents",
+        "Aktueller Entwicklungsstand (MVP, Prototyp, marktreif)",
+        "Technische Hürden und wie ihr sie gemeistert habt",
+        "Skalierbarkeit eurer technischen Lösung",
+        "Geistiges Eigentum und Patente",
       ],
     },
     {
       icon: Users,
-      title: "Team & Organization Readiness",
-      description: "Your team composition and organizational structure",
+      title: "Team & Organisation",
+      description: "Eure Teamzusammensetzung und Organisationsstruktur",
       topics: [
-        "Team composition and key competencies",
-        "Previous experience and track record",
-        "Role distribution and decision-making processes",
-        "Company culture and values alignment",
+        "Teamaufstellung und Kernkompetenzen",
+        "Bisherige Erfahrung und Erfolge",
+        "Rollenverteilung und wie ihr Entscheidungen trefft",
+        "Unternehmenskultur und gemeinsame Werte",
       ],
     },
     {
       icon: Target,
-      title: "Impact Readiness",
-      description: "Your social and environmental impact goals",
+      title: "Impact-Reife",
+      description: "Eure sozialen und ökologischen Wirkungsziele",
       topics: [
-        "Clear impact mission and theory of change",
-        "Target beneficiaries and problem validation",
-        "Impact measurement and KPIs",
-        "Alignment with UN SDGs or similar frameworks",
+        "Klare Impact-Mission und Wirkungslogik (Theory of Change)",
+        "Zielgruppen und Validierung des Problems",
+        "Wirkungsmessung und KPIs",
+        "Bezug zu den UN SDGs oder ähnlichen Rahmenwerken",
       ],
     },
   ]
 
   const preparationChecklist = [
-    "I have reviewed my company's mission and impact goals",
-    "I can clearly explain our current product development stage",
-    "I understand our team's key strengths and any gaps",
-    "I have thought about our target market and beneficiaries",
-    "I can discuss our business model and revenue streams",
-    "I have considered our competitive advantages",
-    "I am prepared to discuss challenges we've faced and overcome",
+    "Ich habe unsere Mission und Wirkungsziele verinnerlicht",
+    "Ich kann unseren aktuellen Entwicklungsstand klar erklären",
+    "Ich kenne die Stärken und Schwächen unseres Teams",
+    "Ich habe über unseren Zielmarkt und unsere Zielgruppen nachgedacht",
+    "Ich kann unser Geschäftsmodell und unsere Einnahmequellen besprechen",
+    "Ich habe mir unsere Wettbewerbsvorteile überlegt",
+    "Ich bin bereit, über gemeisterte Herausforderungen zu sprechen",
   ]
 
   const handleCheckboxChange = (index: number, checked: boolean) => {
@@ -67,57 +69,70 @@ export default function PreparationPage() {
     setIsReady(allChecked)
   }
   
-  // Diese Funktion sorgt dafür, dass alle URL-Parameter an die Interview-Seite weitergegeben werden
   const handleStartInterview = () => {
     const params = new URLSearchParams(searchParams);
     router.push(`/interview?${params.toString()}`);
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* --- ANPASSUNG 1: Breiterer Container, um alles nach links zu rücken --- */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Interview Preparation</h1>
-              <p className="text-gray-600">Get ready for your AI-powered conversation</p>
+            {/* --- ANPASSUNG 2: Größerer Abstand zwischen Logo und Text --- */}
+            <div className="flex items-center space-x-5">
+              {/* --- ANPASSUNG 3: Größerer Container und größeres Logo-Bild --- */}
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
+                <Image 
+                  src="/impactfactory_logo.png" 
+                  alt="Impact Factory Logo" 
+                  width={48} 
+                  height={48}
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Interview-Vorbereitung</h1>
+                <p className="text-gray-600">Mach dich bereit für dein KI-Interview</p>
+              </div>
             </div>
-            <Badge variant="outline" className="border-brand-gold text-yellow-800">
-              Step 2 of 4
+            <Badge variant="outline" className="border-brand text-brand">
+              Schritt 2 von 4
             </Badge>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Introduction */}
+      {/* Hauptinhalt: ebenfalls breiter gemacht für einheitliches Layout */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Einleitung */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Lightbulb className="w-5 h-5 text-brand-gold" />
-              <span>About the Interview</span>
+              <Lightbulb className="w-5 h-5 text-brand" />
+              <span>Über das Interview</span>
             </CardTitle>
             <CardDescription>
-              Our AI interviewer will assess your startup across three key readiness dimensions
+              Unser KI-Interviewer bewertet dein Startup in drei Kernbereichen.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">
-              Our application process is designed to understand your startup&apos;s readiness across three key dimensions: Technology, Team &amp; Organization, and Impact. The next step is an AI-powered conversation that will assess your startup&apos;s maturity and potential.
+              In unserem Bewerbungsprozess wollen wir verstehen, wie startklar dein Startup in den Bereichen Technologie, Team & Organisation und Impact ist. Das KI-gestützte Gespräch hilft uns dabei, eure Reife und euer Potenzial einzuschätzen.
             </p>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900 mb-2">Interview Format</h4>
+                  <h4 className="font-medium text-blue-900 mb-2">Format des Interviews</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Duration: 15-20 minutes</li>
-                    <li>• Format: Video conversation with AI agent</li>
-                    <li>• Language: German or English (your choice)</li>
-                    <li>• Recording: Session will be recorded for evaluation</li>
+                    <li>• Dauer: 15-20 Minuten</li>
+                    <li>• Format: Videogespräch mit einem KI-Agenten</li>
+                    <li>• Sprache: Deutsch oder Englisch (deine Wahl)</li>
+                    <li>• Aufzeichnung: Das Gespräch wird zur Auswertung aufgezeichnet</li>
                   </ul>
                 </div>
               </div>
@@ -125,18 +140,18 @@ export default function PreparationPage() {
           </CardContent>
         </Card>
 
-        {/* Readiness Areas */}
+        {/* Themenbereiche */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">What We&apos;ll Discuss</h2>
-          <div className="grid gap-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Worüber wir sprechen</h2>
+          <div className="grid lg:grid-cols-3 gap-6">
             {readinessAreas.map((area, index) => {
               const Icon = area.icon
               return (
                 <Card key={index}>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-brand-gold bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-yellow-700" />
+                      <div className="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-brand" />
                       </div>
                       <span>{area.title}</span>
                     </CardTitle>
@@ -146,7 +161,7 @@ export default function PreparationPage() {
                     <div className="space-y-2">
                       {area.topics.map((topic, topicIndex) => (
                         <div key={topicIndex} className="flex items-start space-x-2">
-                          <div className="w-1.5 h-1.5 bg-brand-gold rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="w-1.5 h-1.5 bg-brand rounded-full mt-2 flex-shrink-0"></div>
                           <p className="text-sm text-gray-700">{topic}</p>
                         </div>
                       ))}
@@ -158,11 +173,11 @@ export default function PreparationPage() {
           </div>
         </div>
 
-        {/* Preparation Checklist */}
+        {/* Vorbereitungs-Checkliste */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Preparation Checklist</CardTitle>
-            <CardDescription>Review these points to ensure you&apos;re ready for the conversation</CardDescription>
+            <CardTitle>Vorbereitungs-Checkliste</CardTitle>
+            <CardDescription>Geh diese Punkte durch, um sicherzustellen, dass du startklar bist.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -178,11 +193,11 @@ export default function PreparationPage() {
                     htmlFor={`checklist-${index}`}
                     className={`text-sm cursor-pointer ${
                       checkedItems[index]
-                        ? "text-gray-900 line-through [text-decoration-color:#D4AE36]"
+                        ? "text-gray-900 line-through decoration-brand"
                         : "text-gray-700"
                     }`}
                   >
-                    {item.replace("'", "&apos;")}
+                    {item}
                   </label>
                 </div>
               ))}
@@ -192,61 +207,29 @@ export default function PreparationPage() {
               <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <p className="font-medium text-green-900">You&apos;re ready to proceed!</p>
+                  <p className="font-medium text-green-900">Du bist startklar!</p>
                 </div>
                 <p className="text-sm text-green-700 mt-1">
-                  All preparation items completed. You can now start your interview.
+                  Alle Punkte der Checkliste sind erledigt. Du kannst jetzt dein Interview starten.
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Tips Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Tips for Success</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">During the Interview</h4>
-                <ul className="text-sm text-gray-700 space-y-1">
-                  <li>• Speak naturally and be authentic</li>
-                  <li>• Provide specific examples when possible</li>
-                  <li>• Don&apos;t worry about perfect answers</li>
-                  <li>• Ask for clarification if needed</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Technical Setup</h4>
-                <ul className="text-sm text-gray-700 space-y-1">
-                  <li>• Ensure stable internet connection</li>
-                  <li>• Use headphones for better audio quality</li>
-                  <li>• Position camera at eye level</li>
-                  <li>• Choose a quiet, well-lit environment</li>
-                </ul>
-              </div>
-            </div>
-            <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> You&apos;ll be prompted to allow camera and microphone access when you start the interview. Please ensure you&apos;re in a quiet environment with good lighting.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        
+        {/* Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           <Button
             onClick={handleStartInterview}
             disabled={!isReady}
-            className="bg-brand-gold hover:bg-yellow-500 text-black font-medium px-8 py-3"
+            className="bg-brand hover:bg-brand/90 text-black font-medium px-8 py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
             size="lg"
           >
-            Start Interview
+            Interview starten
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           <Button variant="outline" onClick={() => router.push("/")} size="lg">
-            Back to Overview
+            Zurück zur Übersicht
           </Button>
         </div>
       </main>

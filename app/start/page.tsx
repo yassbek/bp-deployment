@@ -1,66 +1,55 @@
 "use client"
 
-import { useSearchParams } from "next/navigation";
+import Image from "next/image" // Hinzugefügt
+import { useSearchParams } from "next/navigation"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Clock, User, MessageSquare, Camera, Mic } from "lucide-react"
 
+// Mapping-Objekt zur Übersetzung des Branchen-Schlüssels in einen Anzeigenamen
+const SECTOR_MAP: { [key: string]: string } = {
+  'kreislaufwirtschaft': 'Kreislaufwirtschaft',
+  'gesundheit_pflege': 'Gesundheit & Pflege',
+  'ernaehrung_landwirtschaft': 'Ernährung & Landwirtschaft',
+  'klimaschutz_energien': 'Klimaschutz & Energien',
+  'staedte_mobilitaet': 'Städte & Mobilität',
+  'bildung_inklusion': 'Bildung & Inklusion'
+};
+
 export default function StartPage() {
   const router = useRouter()
   const searchParams = useSearchParams();
-  
-  // Daten aus den URL-Parametern auslesen statt Hardcoding
+
+  const sectorKey = searchParams.get("branche");
+  const sectorDisplayName = sectorKey ? SECTOR_MAP[sectorKey] || "Unbekannt" : "Unbekannt";
+
   const userInfo = {
     name: searchParams.get("name") || "Bewerber*in",
     company: searchParams.get("startup") || "Dein Startup",
-    sector: searchParams.get("branche") || "Unbekannt",
+    sector: sectorDisplayName,
   }
 
-  // Diese Funktion sorgt dafür, dass alle URL-Parameter an die nächste Seite weitergegeben werden
   const handleContinue = () => {
     const params = new URLSearchParams(searchParams);
     router.push(`/preparation?${params.toString()}`);
   }
 
   const steps = [
-    {
-      id: 1,
-      title: "Typeform Survey",
-      description: "Basic information and company details",
-      status: "completed",
-      icon: CheckCircle,
-    },
-    {
-      id: 2,
-      title: "Interview Preparation",
-      description: "Review guidelines and prepare for your conversation",
-      status: "current",
-      icon: User,
-    },
-    {
-      id: 3,
-      title: "Voice Agent Interview",
-      description: "AI-powered conversation about your startup",
-      status: "pending",
-      icon: MessageSquare,
-    },
-    {
-      id: 4,
-      title: "Submission Complete",
-      description: "Review and confirmation",
-      status: "pending",
-      icon: CheckCircle,
-    },
+      { id: 1, title: "Typeform-Umfrage", description: "Grundlegende Informationen und Firmendetails", status: "completed", icon: CheckCircle },
+      { id: 2, title: "Interview-Vorbereitung", description: "Richtlinien prüfen und auf Ihr Gespräch vorbereiten", status: "current", icon: User },
+      { id: 3, title: "Voice-Agent-Interview", description: "KI-gestütztes Gespräch über Ihr Startup", status: "pending", icon: MessageSquare },
+      { id: 4, title: "Einreichung abgeschlossen", description: "Überprüfung und Bestätigung", status: "pending", icon: CheckCircle },
   ]
 
   const getStepStatus = (status: string) => {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800 border-green-200"
+      // ANPASSUNG: Markenfarbe für den aktuellen Schritt
       case "current":
-        return "bg-brand-gold bg-opacity-20 text-yellow-800 border-brand-gold"
+        return "bg-brand/20 text-amber-800 border-brand"
       case "pending":
         return "bg-gray-100 text-gray-600 border-gray-200"
       default:
@@ -72,11 +61,23 @@ export default function StartPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* ANPASSUNG: Breiteres Layout */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Impact Factory</h1>
-              <p className="text-gray-600">Accelerator Application Process</p>
+            {/* ANPASSUNG: Logo hinzugefügt und gruppiert */}
+            <div className="flex items-center space-x-5">
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
+                <Image 
+                  src="/impactfactory_logo.png" 
+                  alt="Impact Factory Logo" 
+                  width={48} 
+                  height={48}
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Impact Factory</h1>
+                <p className="text-gray-600">Bewerbungsprozess für den Accelerator</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="font-medium text-gray-900">{userInfo.name}</p>
@@ -87,123 +88,119 @@ export default function StartPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+       {/* ANPASSUNG: Breiteres Layout für Konsistenz */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome to the Impact Factory Application Process</CardTitle>
+            <CardTitle className="text-xl">Willkommen beim Bewerbungsprozess der Impact Factory</CardTitle>
             <CardDescription>
-              Thank you for your interest in joining our accelerator program. You&apos;re applying for the{" "}
-              <Badge variant="outline" className="border-brand-gold text-yellow-800">
+              Vielen Dank für Ihr Interesse an unserem Accelerator-Programm. Sie bewerben sich für den{" "}
+              {/* ANPASSUNG: Markenfarbe für den Badge */}
+              <Badge variant="outline" className="border-brand text-amber-800">
                 {userInfo.sector}
               </Badge>{" "}
-              track.
+              Track.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">
-              Our application process is designed to understand your startup&apos;s readiness across three key dimensions: Technology, Team &amp; Organization, and Impact. The next step is an AI-powered conversation that will assess your startup&apos;s maturity and potential.
+              Unser Bewerbungsprozess ist darauf ausgelegt, die Reife Ihres Startups in drei Schlüsseldimensionen zu verstehen: Technologie, Team & Organisation und Impact. Der nächste Schritt ist ein KI-gestütztes Gespräch, das die Reife und das Potenzial Ihres Startups bewerten wird.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">What to expect:</h4>
+              <h4 className="font-medium text-blue-900 mb-2">Was Sie erwartet:</h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• 15-20 minute conversation with our AI interviewer</li>
-                <li>• Questions about your team, technology, and impact goals</li>
-                <li>• Natural conversation - no need to prepare specific answers</li>
-                <li>• Technical requirements: working camera and microphone</li>
+                <li>• 15-20-minütiges Gespräch mit unserem KI-Interviewer</li>
+                <li>• Fragen zu Ihrem Team, Ihrer Technologie und Ihren Impact-Zielen</li>
+                <li>• Ein natürliches Gespräch – Sie müssen keine spezifischen Antworten vorbereiten</li>
+                <li>• Technische Voraussetzungen: funktionierende Kamera und Mikrofon</li>
               </ul>
             </div>
           </CardContent>
         </Card>
 
-        {/* Progress Steps */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Application Progress</CardTitle>
-            <CardDescription>Track your progress through the application process</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {steps.map((step, index) => {
-                const Icon = step.icon
-                return (
-                  <div key={step.id} className="flex items-start space-x-4">
-                    <div
-                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2 ${getStepStatus(step.status)}`}
-                    >
-                      {step.status === "completed" ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : step.status === "current" ? (
-                        <Clock className="w-4 h-4" />
-                      ) : (
-                        <Icon className="w-4 h-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4
-                        className={`font-medium ${step.status === "current" ? "text-gray-900" : step.status === "completed" ? "text-green-800" : "text-gray-500"}`}
-                      >
-                        {step.title}
-                      </h4>
-                      <p
-                        className={`text-sm ${step.status === "current" ? "text-gray-600" : step.status === "completed" ? "text-green-600" : "text-gray-400"}`}
-                      >
-                        {step.description}
-                      </p>
-                    </div>
-                    {index < steps.length - 1 && <div className="absolute left-4 mt-8 w-0.5 h-8 bg-gray-200"></div>}
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {/* ... (Rest der Seite bleibt logisch gleich, profitiert aber vom breiteren Layout) ... */}
+        
+        <div className="grid lg:grid-cols-2 gap-8">
+            {/* Progress Steps */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Bewerbungsfortschritt</CardTitle>
+                <CardDescription>Verfolgen Sie Ihren Fortschritt im Bewerbungsprozess</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {steps.map((step) => {
+                    const Icon = step.icon
+                    return (
+                      <div key={step.id} className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2 ${getStepStatus(step.status)}`}>
+                          {step.status === "completed" ? ( <CheckCircle className="w-4 h-4" /> ) 
+                          : step.status === "current" ? ( <Clock className="w-4 h-4" /> ) 
+                          : ( <Icon className="w-4 h-4" /> )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`font-medium ${step.status === "current" ? "text-gray-900" : step.status === "completed" ? "text-green-800" : "text-gray-500"}`}>
+                            {step.title}
+                          </h4>
+                          <p className={`text-sm ${step.status === "current" ? "text-gray-600" : step.status === "completed" ? "text-green-600" : "text-gray-400"}`}>
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Technical Check */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Camera className="w-5 h-5" />
-              <span>Technical Requirements</span>
-            </CardTitle>
-            <CardDescription>Please ensure your device meets these requirements before proceeding</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <Camera className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-900">Camera Access</p>
-                  <p className="text-sm text-green-700">Required for video interview</p>
+            {/* Technical Check */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Camera className="w-5 h-5" />
+                  <span>Technische Voraussetzungen</span>
+                </CardTitle>
+                <CardDescription>Bitte stellen Sie sicher, dass Ihr Gerät diese Anforderungen erfüllt</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <Camera className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-900">Kamerazugriff</p>
+                      <p className="text-sm text-green-700">Erforderlich</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <Mic className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-900">Mikrofonzugriff</p>
+                      <p className="text-sm text-green-700">Erforderlich</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <Mic className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-900">Microphone Access</p>
-                  <p className="text-sm text-green-700">Required for voice conversation</p>
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Hinweis:</strong> Sie werden aufgefordert, den Zugriff zu erlauben, wenn Sie das Interview starten.
+                  </p>
                 </div>
-              </div>
-            </div>
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Note:</strong> You&apos;ll be prompted to allow camera and microphone access when you start the interview. Please ensure you&apos;re in a quiet environment with good lighting.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+        </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+          {/* ANPASSUNG: Markenfarbe für den Button */}
           <Button
             onClick={handleContinue}
-            className="bg-brand-gold hover:bg-yellow-500 text-black font-medium px-8 py-3"
+            className="bg-brand hover:bg-brand/90 text-black font-bold px-8 py-3"
             size="lg"
           >
-            Continue to Preparation
+            Weiter zur Vorbereitung
           </Button>
           <Button variant="outline" onClick={() => window.open("mailto:support@impactfactory.de", "_blank")} size="lg">
-            Need Help?
+            Benötigen Sie Hilfe?
           </Button>
         </div>
       </main>

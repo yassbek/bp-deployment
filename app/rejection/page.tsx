@@ -21,13 +21,7 @@ export default function RejectionPage() {
           <br /><br />
           Wir ermutigen dich aber, es wieder zu versuchen! Behalte unsere Kriterien im Auge und bewirb dich gerne für den nächsten Batch wieder. Wir freuen uns darauf, von den Fortschritten deines Startups zu hören.
         </p>
-        <Button
-          size="lg"
-          onClick={() => router.push('/')}
-          className="bg-gray-800 hover:bg-gray-700 text-white font-bold py-4 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105"
-        >
-          Zurück zur Startseite
-        </Button>
+        
       </main>
     </div>
   );
