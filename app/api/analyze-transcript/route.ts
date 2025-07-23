@@ -10,7 +10,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare prompt for Gemini
-    const prompt = `You are an expert reviewer. Analyze the following interview transcript and provide a JSON object with integer scores (1-10) for the following fields: team_kompetenz, team_dynamik, organisation, fuehrung, prozesse, kultur. Only return the JSON object, nothing else.\n\nTranscript:\n${JSON.stringify(transcript, null, 2)}`;
+    // Instruct Gemini to return a JSON object with:
+    // - Integer scores (1-10) for: team_kompetenz, team_dynamik, organisation, fuehrung, prozesse, kultur
+    // - Arrays of strings for:
+    //   - ai_staerken: strengths (list of strengths identified in the transcript)
+    //   - ai_verbesserungsbereiche: areas for improvement (list of weaknesses or areas to improve)
+    //   - ai_empfehlungen: recommendations (list of actionable recommendations)
+    const prompt = `You are an expert reviewer. Analyze the following interview transcript and provide a JSON object with:
+- Integer scores (1-10) for the following fields: team_kompetenz, team_dynamik, organisation, fuehrung, prozesse, kultur.
+- An array of strings for each of the following fields:
+  - ai_staerken: strengths (list of strengths identified in the transcript)
+  - ai_verbesserungsbereiche: areas for improvement (list of weaknesses or areas to improve)
+  - ai_empfehlungen: recommendations (list of actionable recommendations for the team/organization)
+Only return the JSON object, nothing else.
+
+Transcript:
+${JSON.stringify(transcript, null, 2)}`;
 
     // Call Gemini
     const geminiRes = await fetch(GEMINI_API_URL + `?key=${process.env.GEMINI_API_KEY}`,
@@ -34,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to parse Gemini response', geminiData }, { status: 500 });
     }
 
-    // Patch scores to Directus
+    // Patch scores and AI analysis fields to Directus
     const directusUrl = `${process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL}/items/applications/${applicationId}`;
     const directusToken = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN || process.env.DIRECTUS_STATIC_TOKEN;
     const directusRes = await fetch(directusUrl, {
@@ -49,7 +64,10 @@ export async function POST(request: NextRequest) {
         organisation: scores.organisation,
         fuehrung: scores.fuehrung,
         prozesse: scores.prozesse,
-        kultur: scores.kultur
+        kultur: scores.kultur,
+        ai_staerken: scores.ai_staerken, // array of strengths
+        ai_verbesserungsbereiche: scores.ai_verbesserungsbereiche, // array of areas for improvement
+        ai_empfehlungen: scores.ai_empfehlungen // array of recommendations
       })
     });
     const directusData = await directusRes.json();
