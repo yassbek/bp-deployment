@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image";
-import { useConversation } from "@elevenlabs/react"
+import { useConversation } from "@elevenlabs/react" // <-- Use the correct package!
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,15 +23,15 @@ export default function InterviewPage() {
     const [connectionError, setConnectionError] = useState<string | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const streamRef = useRef<MediaStream | null>(null)
-    const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([])
+    type TranscriptRole = "user" | "ai" | "system" | "error";
+    const [transcript, setTranscript] = useState<Array<{ role: TranscriptRole; text: string; timestamp: string }>>([])
 
-    useEffect(() => {
-        if (!applicationId) {
-            console.error("FEHLER: Es wurde keine applicationId in der URL gefunden!");
-        }
-    }, [applicationId]);
+    const getCurrentTime = () => {
+        const now = new Date()
+        return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    }
 
-    const appendToTranscript = useCallback((role: "user" | "ai", text: string) => {
+    const appendToTranscript = useCallback((role: TranscriptRole, text: string) => {
         setTranscript((prev) => [...prev, { role, text, timestamp: new Date().toISOString() }])
     }, [])
 
@@ -40,25 +40,121 @@ export default function InterviewPage() {
             setIsConnected(true)
             setConnecting(false)
             setConnectionError(null)
+            appendToTranscript("system", "Verbunden mit dem KI-Agenten.")
         },
         onDisconnect: () => {
             setIsConnected(false)
             setConnecting(false)
+            appendToTranscript("system", "Verbindung zum KI-Agenten getrennt.")
         },
-        onMessage: (props: { message: string; source: "user" | "ai" }) => {
-            appendToTranscript(props.source, props.message);
-        },
-        onError: (error: { message?: string } | string) => {
-            let message: string;
-            if (typeof error === 'string') {
-                message = error;
-            } else {
-                message = error?.message || "Unknown error";
+        onMessage: (msg) => {
+            // Robust message parsing (matches working code)
+            try {
+                if (typeof msg === "string") {
+                    const parsed = JSON.parse(msg)
+                    if (parsed.source === "ai") {
+                        appendToTranscript("ai", parsed.message)
+                    } else if (parsed.source === "user") {
+                        appendToTranscript("user", parsed.message)
+                    } else {
+                        appendToTranscript("ai", msg)
+                    }
+                } else if (typeof msg === "object" && msg !== null) {
+                    if (msg.source === "ai") {
+                        appendToTranscript("ai", msg.message)
+                    } else if (msg.source === "user") {
+                        appendToTranscript("user", msg.message)
+                    } else {
+                        appendToTranscript("ai", JSON.stringify(msg))
+                    }
+                }
+            } catch {
+                appendToTranscript("ai", typeof msg === "string" ? msg : JSON.stringify(msg))
             }
-            setConnectionError(message)
+        },
+        onError: (err) => {
+            const errorMsg = typeof err === "object" && err !== null && "message" in err ? (err as any).message || JSON.stringify(err) : String(err);
+            setConnectionError(errorMsg)
+            appendToTranscript("error", "Verbindungsfehler: " + errorMsg)
             setConnecting(false)
         },
     })
+
+    // Check for microphone permission before connecting
+    const checkMicrophonePermission = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true })
+            setHasPermissions(true)
+            return true
+        } catch (error) {
+            setPermissionError("Mikrofonberechtigung erforderlich.")
+            setHasPermissions(false)
+            return false
+        }
+    }
+
+    const startInterview = useCallback(async () => {
+        setConnectionError(null)
+        setPermissionError(null)
+        setConnecting(true)
+        const hasMic = await checkMicrophonePermission()
+        if (!hasMic) {
+            setConnecting(false)
+            return
+        }
+        try {
+            await conversation.startSession({
+                agentId: "nIUEIdEBk48Ul9rgT1Fp" // <-- No connectionType!
+            })
+        } catch (error) {
+            setConnectionError("Interview konnte nicht gestartet werden. Bitte überprüfen Sie Ihre Mikrofonberechtigungen.")
+            setConnecting(false)
+        }
+    }, [conversation, checkMicrophonePermission])
+
+    const sendTranscriptToDirectus = async () => {
+        if (!applicationId || transcript.length === 0) return;
+        const url = `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/items/applications/${applicationId}`;
+        const token = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
+        if (!token) return;
+        try {
+            await fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ transcript }),
+            });
+        } catch (err) {
+            // handle error
+        }
+    }
+
+    const endInterview = useCallback(async () => {
+        await conversation.endSession()
+        setTimeout(async () => {
+            await sendTranscriptToDirectus()
+            if (applicationId && transcript.length > 0) {
+                try {
+                    const res = await fetch('/api/analyze-transcript', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ transcript, applicationId })
+                    });
+                    const data = await res.json();
+                    // handle analysis result
+                } catch (err) {
+                    // handle error
+                }
+            }
+            const params = new URLSearchParams(searchParams);
+            router.push(`/completion?${params.toString()}`);
+        }, 200);
+    }, [conversation, applicationId, transcript, searchParams, router])
+
+    useEffect(() => {
+        if (!applicationId) {
+            console.error("No applicationId found")
+        }
+    }, [applicationId]);
 
     useEffect(() => {
         let didCancel = false
@@ -92,77 +188,6 @@ export default function InterviewPage() {
             }
         }
     }, [conversation, isConnected])
-
-    const startInterview = async () => {
-        setConnectionError(null)
-        if (!hasPermissions) {
-            setPermissionError("Berechtigungen sind erforderlich.")
-            return
-        }
-        setConnecting(true)
-        try {
-            await conversation.startSession({
-                agentId: "nIUEIdEBk48Ul9rgT1Fp",
-            })
-        } catch (error: unknown) {
-            let message = "Interview konnte nicht gestartet werden.";
-            if (
-                error &&
-                typeof error === 'object' &&
-                'message' in error &&
-                typeof (error as { message?: unknown }).message === 'string'
-            ) {
-                message = (error as { message: string }).message;
-            }
-            setConnectionError(message);
-            setConnecting(false);
-        }
-    }
-
-    const sendTranscriptToDirectus = async () => {
-        if (!applicationId || transcript.length === 0) return;
-        
-        const url = `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/items/applications/${applicationId}`;
-        const token = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
-
-        if (!token) {
-            console.error("Directus Fehler: Token fehlt.");
-            return;
-        }
-
-        try {
-            await fetch(url, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ transcript }),
-            });
-        } catch (err) {
-            console.error("Netzwerkfehler beim Senden an Directus:", err);
-        }
-    }
-
-    const endInterview = async () => {
-        await conversation.endSession();
-        setTimeout(async () => {
-            await sendTranscriptToDirectus();
-            // Also send transcript to the new analysis endpoint
-            if (applicationId && transcript.length > 0) {
-                try {
-                    const res = await fetch('/api/analyze-transcript', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ transcript, applicationId })
-                    });
-                    const data = await res.json();
-                    console.log('Analysis result:', data);
-                } catch (err) {
-                    console.error('Error calling analyze-transcript:', err);
-                }
-            }
-            const params = new URLSearchParams(searchParams);
-            router.push(`/completion?${params.toString()}`);
-        }, 200);
-    };
     
     return (
         <div className="min-h-screen bg-gray-50">
