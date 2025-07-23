@@ -45,21 +45,19 @@ export default function InterviewPage() {
             setIsConnected(false)
             setConnecting(false)
         },
-        onMessage: (props: { message: string; source: "user" | "ai" }) => {
-            appendToTranscript(props.source, props.message);
+        onMessage: (message) => {
+            const text = message?.text ?? JSON.stringify(message);
+            appendToTranscript("ai", text);
         },
-        onError: (error: { message?: string } | string) => {
-            let message: string;
-            if (typeof error === 'string') {
-                message = error;
-            } else {
-                message = error?.message || "Unknown error";
-            }
-            setConnectionError(message)
+        onError: (error) => {
+            setConnectionError(error?.message || "Unknown error")
             setConnecting(false)
         },
     })
 
+    // --- KORRIGIERTER BEREICH START ---
+
+    // useEffect für die Kamera-Initialisierung.
     useEffect(() => {
         let didCancel = false
         async function setupCamera() {
@@ -76,22 +74,40 @@ export default function InterviewPage() {
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream
                 }
-            } catch {
+            } catch (error: any) {
                 setPermissionError("Kamera-/Mikrofonberechtigungen erforderlich.")
                 setHasPermissions(false)
             }
         }
         setupCamera()
+
+        // Die Aufräumfunktion stoppt jetzt NUR NOCH die Kamera, aber beendet nicht die Konversation.
+        // Das macht die Komponente robust gegen Neuladungen.
         return () => {
             didCancel = true
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach((track) => track.stop())
             }
-            if(isConnected){
+        }
+    }, []) // Leeres Array ist korrekt, damit dies nur einmal passiert.
+
+    // NEU: Ein separater Effekt, der die Session nur beendet, wenn der Benutzer die Seite komplett verlässt.
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (conversation.isSessionActive) {
                 conversation.endSession();
             }
-        }
-    }, [conversation, isConnected])
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [conversation]); // Hängt sicher vom conversation-Objekt ab.
+
+    // --- KORRIGIERTER BEREICH ENDE ---
+
 
     const startInterview = async () => {
         setConnectionError(null)
@@ -104,18 +120,9 @@ export default function InterviewPage() {
             await conversation.startSession({
                 agentId: "nIUEIdEBk48Ul9rgT1Fp",
             })
-        } catch (error: unknown) {
-            let message = "Interview konnte nicht gestartet werden.";
-            if (
-                error &&
-                typeof error === 'object' &&
-                'message' in error &&
-                typeof (error as { message?: unknown }).message === 'string'
-            ) {
-                message = (error as { message: string }).message;
-            }
-            setConnectionError(message);
-            setConnecting(false);
+        } catch (error: any) {
+            setConnectionError(error?.message || "Interview konnte nicht gestartet werden.")
+            setConnecting(false)
         }
     }
 
@@ -141,6 +148,7 @@ export default function InterviewPage() {
         }
     }
 
+    // Diese Funktion beendet das Interview absichtlich und ist korrekt.
     const endInterview = async () => {
         await conversation.endSession();
         setTimeout(async () => {
@@ -152,19 +160,15 @@ export default function InterviewPage() {
     
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
             <header className="bg-white border-b border-gray-200">
-                {/* ANPASSUNG: Breiteres Layout für den Header */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
-                        {/* ANPASSUNG: Logo und Titel wie auf den anderen Seiten */}
                         <div className="flex items-center space-x-5">
                             <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
                                 <Image src="/impactfactory_logo.png" alt="Impact Factory Logo" width={48} height={48} />
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">KI-gestütztes Interview</h1>
-                                {/* ANPASSUNG: Live-Badge neben dem Text platziert */}
                                 <div className="flex items-center space-x-2 mt-1">
                                     <p className="text-gray-600">Readiness Assessment</p>
                                     <Badge
@@ -183,7 +187,6 @@ export default function InterviewPage() {
                 </div>
             </header>
 
-            {/* Hauptbereich */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="space-y-8">
                     <div className="text-center">
@@ -197,7 +200,6 @@ export default function InterviewPage() {
                         </p>
                     </div>
 
-                    {/* Videobereich */}
                     <div className="max-w-5xl mx-auto">
                         <div className="grid md:grid-cols-2 gap-8">
                             {/* Dein Video */}
@@ -229,7 +231,6 @@ export default function InterviewPage() {
                             </Card>
 
                             {/* KI-Agent */}
-                            {/* ANPASSUNG: Markenfarben für den KI-Agenten */}
                             <Card className="overflow-hidden border-2 border-brand shadow-lg">
                                 <CardContent className="p-0 relative">
                                     <div className="aspect-video bg-gradient-to-br from-brand via-amber-400 to-yellow-400 flex items-center justify-center">
@@ -261,13 +262,11 @@ export default function InterviewPage() {
                         </div>
                     </div>
 
-                    {/* Steuerung */}
                     <div className="flex items-center justify-center py-6">
                         {!isConnected ? (
                             <Button
                                 onClick={startInterview}
                                 disabled={!hasPermissions || connecting}
-                                // ANPASSUNG: Markenfarbe für den Start-Button
                                 className="bg-brand hover:bg-brand/90 text-black font-bold px-8 py-4 text-lg rounded-full shadow-lg transition-all duration-200 transform hover:scale-105 disabled:bg-gray-300 disabled:scale-100"
                             >
                                 <Phone className="w-5 h-5 mr-3" />
@@ -284,7 +283,6 @@ export default function InterviewPage() {
                         )}
                     </div>
 
-                    {/* Statusmeldungen */}
                     {(permissionError || connectionError) && (
                         <div className="text-center">
                             <div className="inline-flex items-center bg-red-50 px-5 py-2 rounded-full border border-red-200">
