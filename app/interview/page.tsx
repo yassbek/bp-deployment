@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image";
-import { useConversation } from "@elevenlabs/react"
+import { useConversation } from "@elevenlabs/react" // <-- Use the correct package!
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,15 +23,15 @@ export default function InterviewPage() {
     const [connectionError, setConnectionError] = useState<string | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const streamRef = useRef<MediaStream | null>(null)
-    const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([])
+    type TranscriptRole = "user" | "ai" | "system" | "error";
+    const [transcript, setTranscript] = useState<Array<{ role: TranscriptRole; text: string; timestamp: string }>>([])
 
-    useEffect(() => {
-        if (!applicationId) {
-            console.error("FEHLER: Es wurde keine applicationId in der URL gefunden!");
-        }
-    }, [applicationId]);
+    const getCurrentTime = () => {
+        const now = new Date()
+        return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+    }
 
-    const appendToTranscript = useCallback((role: "user" | "ai", text: string) => {
+    const appendToTranscript = useCallback((role: TranscriptRole, text: string) => {
         setTranscript((prev) => [...prev, { role, text, timestamp: new Date().toISOString() }])
     }, [])
 
@@ -40,20 +40,103 @@ export default function InterviewPage() {
             setIsConnected(true)
             setConnecting(false)
             setConnectionError(null)
+            appendToTranscript("system", "Verbunden mit dem KI-Agenten.")
         },
         onDisconnect: () => {
             setIsConnected(false)
             setConnecting(false)
+            appendToTranscript("system", "Verbindung zum KI-Agenten getrennt.")
         },
-        onMessage: (message) => {
-            const text = message?.text ?? JSON.stringify(message);
-            appendToTranscript("ai", text);
+        onMessage: (props: { message: string; source: "user" | "ai" }) => {
+            appendToTranscript(props.source, props.message);
         },
-        onError: (error) => {
-            setConnectionError(error?.message || "Unknown error")
+        onError: (error: { message?: string } | string) => {
+            let message: string;
+            if (typeof error === 'string') {
+                message = error;
+            } else {
+                message = error?.message || "Unknown error";
+            }
+            setConnectionError(message)
             setConnecting(false)
         },
     })
+
+    // Check for microphone permission before connecting
+    const checkMicrophonePermission = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true })
+            setHasPermissions(true)
+            return true
+        } catch (error) {
+            setPermissionError("Mikrofonberechtigung erforderlich.")
+            setHasPermissions(false)
+            return false
+        }
+    }
+
+    const startInterview = useCallback(async () => {
+        setConnectionError(null)
+        setPermissionError(null)
+        setConnecting(true)
+        const hasMic = await checkMicrophonePermission()
+        if (!hasMic) {
+            setConnecting(false)
+            return
+        }
+        try {
+            await conversation.startSession({
+                agentId: "nIUEIdEBk48Ul9rgT1Fp" // <-- No connectionType!
+            })
+        } catch (error) {
+            setConnectionError("Interview konnte nicht gestartet werden. Bitte überprüfen Sie Ihre Mikrofonberechtigungen.")
+            setConnecting(false)
+        }
+    }, [conversation, checkMicrophonePermission])
+
+    const sendTranscriptToDirectus = async () => {
+        if (!applicationId || transcript.length === 0) return;
+        const url = `${process.env.NEXT_PUBLIC_DIRECTUS_URL}/items/applications/${applicationId}`;
+        const token = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
+        if (!token) return;
+        try {
+            await fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ transcript }),
+            });
+        } catch (err) {
+            // handle error
+        }
+    }
+
+    const endInterview = useCallback(async () => {
+        await conversation.endSession()
+        setTimeout(async () => {
+            await sendTranscriptToDirectus()
+            if (applicationId && transcript.length > 0) {
+                try {
+                    const res = await fetch('/api/analyze-transcript', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ transcript, applicationId })
+                    });
+                    const data = await res.json();
+                    // handle analysis result
+                } catch (err) {
+                    // handle error
+                }
+            }
+            const params = new URLSearchParams(searchParams);
+            router.push(`/completion?${params.toString()}`);
+        }, 200);
+    }, [conversation, applicationId, transcript, searchParams, router])
+
+    useEffect(() => {
+        if (!applicationId) {
+            console.error("No applicationId found")
+        }
+    }, [applicationId]);
 
     // --- KORRIGIERTER BEREICH START ---
 
@@ -97,17 +180,8 @@ export default function InterviewPage() {
             if (conversation.isSessionActive) {
                 conversation.endSession();
             }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [conversation]); // Hängt sicher vom conversation-Objekt ab.
-
-    // --- KORRIGIERTER BEREICH ENDE ---
-
+        }
+    }, [conversation, isConnected])
 
     const startInterview = async () => {
         setConnectionError(null)
@@ -120,9 +194,18 @@ export default function InterviewPage() {
             await conversation.startSession({
                 agentId: "nIUEIdEBk48Ul9rgT1Fp",
             })
-        } catch (error: any) {
-            setConnectionError(error?.message || "Interview konnte nicht gestartet werden.")
-            setConnecting(false)
+        } catch (error: unknown) {
+            let message = "Interview konnte nicht gestartet werden.";
+            if (
+                error &&
+                typeof error === 'object' &&
+                'message' in error &&
+                typeof (error as { message?: unknown }).message === 'string'
+            ) {
+                message = (error as { message: string }).message;
+            }
+            setConnectionError(message);
+            setConnecting(false);
         }
     }
 
@@ -148,7 +231,6 @@ export default function InterviewPage() {
         }
     }
 
-    // Diese Funktion beendet das Interview absichtlich und ist korrekt.
     const endInterview = async () => {
         await conversation.endSession();
         setTimeout(async () => {
