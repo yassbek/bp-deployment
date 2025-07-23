@@ -17,12 +17,36 @@ export async function POST(request: NextRequest) {
     //   - ai_verbesserungsbereiche: areas for improvement (list of weaknesses or areas to improve)
     //   - ai_empfehlungen: recommendations (list of actionable recommendations)
     const prompt = `You are an expert reviewer. Analyze the following interview transcript and provide a JSON object with:
-- Integer scores (1-10) for the following fields: team_kompetenz, team_dynamik, organisation, fuehrung, prozesse, kultur.
-- An array of strings for each of the following fields:
+- Integer scores (1-100) for the following fields: team_kompetenz, team_dynamik, organisation, fuehrung, prozesse, kultur.
+- An array of strings for each of the following fields( for testing purposes, even if the transcript does not contain any information, return made up strengths, areas for improvement and recommendations based on a fictive company, aim for three strengths, three areas for improvement and three recommendations):
   - ai_staerken: strengths (list of strengths identified in the transcript)
   - ai_verbesserungsbereiche: areas for improvement (list of weaknesses or areas to improve)
   - ai_empfehlungen: recommendations (list of actionable recommendations for the team/organization)
 Only return the JSON object, nothing else.
+here is the example payload you should return:
+{
+  "team_kompetenz": 8,
+  "team_dynamik": 7,
+  "organisation": 9,
+  "fuehrung": 8,
+  "prozesse": 7,
+  "kultur": 9,
+  "ai_staerken": [
+    "Das Team verfügt über umfassende Fachkompetenz in allen Schlüsselbereichen.",
+    "Klare Rollenverteilung und effektive Zusammenarbeit.",
+    "Starke Unternehmenskultur mit gemeinsamen Werten."
+  ],
+  "ai_verbesserungsbereiche": [
+    "Finanzplanung sollte weiter professionalisiert werden.",
+    "Das Mentoring-Netzwerk kann ausgebaut werden."
+  ],
+  "ai_empfehlungen": [
+    "Ein Advisory Board mit Branchenexperten aufbauen.",
+    "Eine detaillierte 18-Monats-Finanzplanung erstellen.",
+    "Strukturierte Feedback-Prozesse einführen."
+  ]
+}
+  and here is the transcript:
 
 Transcript:
 ${JSON.stringify(transcript, null, 2)}`;
