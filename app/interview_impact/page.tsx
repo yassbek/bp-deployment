@@ -112,7 +112,7 @@ export default function InterviewPage() {
         setConnecting(true)
         try {
             await conversation.startSession({
-                agentId: "nIUEIdEBk48Ul9rgT1Fp",
+                agentId: "agent_8401k1zv0y5ye8rvgys8n8pchnhk",
                 connectionType: "webrtc",
             })
         } catch (error) {

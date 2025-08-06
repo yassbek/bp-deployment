@@ -24,6 +24,7 @@ export default function CompletionPage() {
 
     // NEU: Alle Schritte als "completed" markiert
     const applicationSteps = [
+        { title: "Readiness", icon: Target, status: "completed" },
         { title: "Impact-Reife", icon: Target, status: "completed" },
         { title: "Marketing & Positionierung", icon: Megaphone, status: "completed" },
         { title: "Finanzierungs-Reife", icon: DollarSign, status: "completed" },
@@ -119,7 +120,7 @@ export default function CompletionPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Abgeschlossene Interviews</CardTitle>
-                                <CardDescription>Alle vier Bereiche wurden erfolgreich erfasst.</CardDescription>
+                                <CardDescription>Alle fünf Bereiche wurden erfolgreich erfasst.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {applicationSteps.map((step, index) => (
