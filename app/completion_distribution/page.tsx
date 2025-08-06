@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Clock, Mail, Calendar, Target, Briefcase, Megaphone, DollarSign } from "lucide-react"
 
 export default function CompletionPage() {
-    const router = useRouter()
-    const searchParams = useSearchParams();
-    const applicationId = searchParams.get("applicationId");
+   
+    
+    
     
     const [showSuccess, setShowSuccess] = useState(false)
 
@@ -39,13 +39,7 @@ export default function CompletionPage() {
         { title: "Programmstart", description: "Bei einer Zusage beginnt deine Reise im Accelerator.", timeframe: "Nächster Jahrgang", icon: Calendar },
     ]
 
-    const goToDashboard = () => {
-        if (applicationId) {
-            router.push(`/dashboard?applicationId=${applicationId}`);
-        } else {
-            router.push("/dashboard"); // Fallback
-        }
-    };
+    
 
     return (
         <div className="min-h-screen bg-gray-50">

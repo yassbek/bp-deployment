@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { CheckCircle, Lightbulb, TrendingUp, Users, Handshake, Briefcase, ArrowRight, Info, Megaphone } from "lucide-react" // Megaphone als neues Icon hinzugefügt, falls verfügbar, sonst Lightbulb
+import { CheckCircle, Lightbulb, TrendingUp, Handshake, Briefcase, ArrowRight, Info } from "lucide-react" // Megaphone als neues Icon hinzugefügt, falls verfügbar, sonst Lightbulb
 
 export default function PreparationPage() {
     const router = useRouter()

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Clock, User, MessageSquare, Camera, Mic, Info, ArrowRight } from "lucide-react"
+import { CheckCircle, User, MessageSquare, Camera, Mic, Info, ArrowRight } from "lucide-react"
 
 // Mapping-Objekt zur Übersetzung des Branchen-Schlüssels in einen Anzeigenamen
 const SECTOR_MAP: { [key: string]: string } = {

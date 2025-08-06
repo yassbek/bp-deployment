@@ -137,7 +137,7 @@ export default function CompletionPage() {
                                    Nimm dir kurz Zeit, um dich auf das nächste Thema vorzubereiten. Alle nötigen Informationen findest du auf der nächsten Seite.
                                </p>
                                <Button onClick={goToNextStep} size="lg" className="w-full bg-brand hover:bg-brand/90 text-black font-bold">
-                                    Weiter zu "{nextStep?.title}"
+                                    Weiter zu &quot;{nextStep?.title}&quot;
                                     <ArrowRight className="w-4 h-4 ml-2" />
                                 </Button>
                             </CardContent>
