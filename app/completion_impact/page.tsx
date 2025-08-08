@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Script from "next/script"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,7 @@ export default function CompletionPage() {
         return () => clearTimeout(timer)
     }, [])
 
-    // NEU: Reihenfolge der Schritte angepasst, mit "Impact-Reife" als abgeschlossen
+    // Schritte im Bewerbungsprozess
     const applicationSteps = [
         { title: "Readiness Assessment", icon: ClipboardCheck, status: "completed", path: `/preparation_readiness?applicationId=${applicationId}` },
         { title: "Impact-Reife", icon: Target, status: "completed", path: `/preparation_impact?applicationId=${applicationId}` },
@@ -31,7 +32,7 @@ export default function CompletionPage() {
         { title: "Wachstum & Vertrieb", icon: Briefcase, status: "pending", path: `/preparation_distribution?applicationId=${applicationId}` }
     ]
     
-    // Logik angepasst: Der 'completedStep' ist der letzte im Array mit Status 'completed'
+    // letzter abgeschlossener Schritt
     const completedSteps = applicationSteps.filter(step => step.status === 'completed');
     const completedStep = completedSteps.length > 0 ? completedSteps[completedSteps.length - 1] : null;
     const nextStep = applicationSteps.find(step => step.status === "next");
@@ -154,6 +155,11 @@ export default function CompletionPage() {
                         Interview abgeschlossen am {new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" })}
                     </p>
                 </div>
+
+                {/* --- ElevenLabs Widget unten rechts --- */}
+                
+                <elevenlabs-convai agent-id="agent_9101k255bc9sfhd8qzyh64wm6drk"></elevenlabs-convai>
+                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" async />
             </main>
         </div>
     )

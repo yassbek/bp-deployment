@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Script from "next/script"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,6 @@ export default function CompletionPage() {
         return () => clearTimeout(timer)
     }, [])
 
-    // NEU: Alle fünf Schritte, inkl. "Readiness Assessment", als "completed" markiert
     const applicationSteps = [
         { title: "Readiness Assessment", icon: ClipboardCheck, status: "completed" },
         { title: "Impact-Reife", icon: Target, status: "completed" },
@@ -141,6 +141,11 @@ export default function CompletionPage() {
                         Bewerbung abgeschlossen am {new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" })}
                     </p>
                 </div>
+
+                {/* ElevenLabs Widget */}
+                
+                <elevenlabs-convai agent-id="agent_3801k25662s9fkbs58c3ytmq8s8c"></elevenlabs-convai>
+                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" async />
             </main>
         </div>
     )

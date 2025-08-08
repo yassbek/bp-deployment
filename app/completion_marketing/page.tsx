@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Script from "next/script"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,6 @@ export default function CompletionPage() {
         return () => clearTimeout(timer)
     }, [])
 
-    // NEU: "Readiness Assessment" hinzugefügt und Status aktualisiert
     const applicationSteps = [
         { title: "Readiness Assessment", icon: ClipboardCheck, status: "completed", path: `/preparation_readiness?applicationId=${applicationId}` },
         { title: "Impact-Reife", icon: Target, status: "completed", path: `/preparation_impact?applicationId=${applicationId}` },
@@ -95,7 +95,6 @@ export default function CompletionPage() {
                                     const isNext = step.status === 'next';
                                     const isPending = step.status === 'pending';
                                     
-                                    
                                     let StatusIcon = CheckCircle;
                                     if (isNext) StatusIcon = ArrowRight;
                                     if (isPending) StatusIcon = Clock;
@@ -133,12 +132,8 @@ export default function CompletionPage() {
                                 <CardTitle className="text-blue-900">Stark gemacht!</CardTitle>
                             </CardHeader>
                             <CardContent className="text-blue-800 space-y-4">
-                               <p>
-                                   Mehr als die Hälfte der Interviews ist geschafft! Jedes Gespräch liefert uns wertvolle Einblicke.
-                               </p>
-                               <p>
-                                   Nimm dir kurz Zeit, um dich auf das nächste Thema vorzubereiten. Alle nötigen Informationen findest du auf der nächsten Seite.
-                               </p>
+                               <p>Mehr als die Hälfte der Interviews ist geschafft! Jedes Gespräch liefert uns wertvolle Einblicke.</p>
+                               <p>Nimm dir kurz Zeit, um dich auf das nächste Thema vorzubereiten. Alle nötigen Informationen findest du auf der nächsten Seite.</p>
                                <Button onClick={goToNextStep} size="lg" className="w-full bg-brand hover:bg-brand/90 text-black font-bold">
                                     Weiter zu &quot;{nextStep?.title}&quot;
                                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -154,6 +149,11 @@ export default function CompletionPage() {
                         Interview abgeschlossen am {new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" })}
                     </p>
                 </div>
+
+                {/* ElevenLabs Widget */}
+                
+                <elevenlabs-convai agent-id="agent_8101k255ymtnft7s4vzzd42ywb43"></elevenlabs-convai>
+                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" async />
             </main>
         </div>
     )
