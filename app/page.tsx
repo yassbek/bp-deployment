@@ -112,7 +112,7 @@ function AppView() {
                     nextPath = `/preparation_ditribution?applicationId=${currentApplicationId}`;
                     break;   
                 case 'completed':
-                    nextPath = `/dashboard?applicationId=${currentApplicationId}`;
+                    nextPath = `/completion_distribution?applicationId=${currentApplicationId}`;
                     break;
                 default:
                     // Fallback für unbekannten Status, zeige Landing Page
