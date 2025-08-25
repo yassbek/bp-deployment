@@ -195,7 +195,7 @@ function AppView() {
         
         // Nach erfolgreicher Typeform-Einreichung und Qualifizierung,
         // leite zum ersten Interview (Team-Reife) weiter.
-        router.push(`/preparation?${queryParams}`);
+        router.push(`/start?${queryParams}`);
       } else {
         router.push('/rejection');
       }
