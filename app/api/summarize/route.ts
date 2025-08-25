@@ -97,12 +97,21 @@ Gib nur den Fließtext der Zusammenfassung zurück, ohne Einleitung oder Übersc
       { message: 'Zusammenfassung erfolgreich erstellt und gespeichert.' },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) { // Korrektur: 'any' wurde zu 'unknown' geändert
     console.error("Ein Fehler in der /api/summarize Route ist aufgetreten:", error);
+    
+    // Sicherere Methode zur Extraktion der Fehlermeldung
+    let errorMessage = 'Ein unbekannter Fehler ist aufgetreten.';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    } else if (typeof error === 'string') {
+        errorMessage = error;
+    }
+
     return NextResponse.json(
       {
         message: 'Ein interner Serverfehler ist aufgetreten.',
-        error: error?.message ?? String(error),
+        error: errorMessage,
       },
       { status: 500 }
     );
