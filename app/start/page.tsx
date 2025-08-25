@@ -20,7 +20,7 @@ import {
 import { CheckCircle, User, MessageSquare, Camera, Mic, Info, ArrowRight, Loader2, UploadCloud, FileCheck2 } from "lucide-react"
 
 // Korrekte Imports für das Directus SDK
-import { createDirectus, staticToken, rest, uploadFiles, updateItem } from '@directus/sdk';
+import { createDirectus, staticToken, rest, uploadFiles } from '@directus/sdk';
 
 // Mapping-Objekt zur Übersetzung des Branchen-Schlüssels in einen Anzeigenamen
 const SECTOR_MAP: { [key: string]: string } = {
@@ -74,89 +74,99 @@ export default function StartPage() {
     }
   };
 
-  // ### EINZIGE ÄNDERUNG IN DER LOGIK IST HIER ###
-  // Ersetze nur den problematischen Teil in deiner handleUploadAndContinue Funktion:
+  // Background Upload und Analyse Funktion
+  const startBackgroundUploadAndAnalysis = async (file: File) => {
+    try {
+      // Upload der Datei
+      const formData = new FormData();
+      formData.append('file', file);
 
-const handleUploadAndContinue = async () => {
-  if (!selectedFile) {
-    alert("Bitte wähle zuerst dein Pitchdeck aus.");
-    return;
-  }
-  
-  setIsLoading(true);
+      console.log("Starte Background-Upload...");
+      const fileUploadResult = await directus.request(uploadFiles(formData));
+      const fileId = fileUploadResult.id;
+      console.log('Datei erfolgreich hochgeladen. File ID:', fileId);
 
-  try {
-    // -- SCHRITT 1: DATEI-UPLOAD --
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+      const applicantId = searchParams.get("applicationId");
+      if (!applicantId) {
+        throw new Error("Application-ID nicht in der URL gefunden!");
+      }
 
-    console.log("Starte Upload...");
-    const fileUploadResult = await directus.request(uploadFiles(formData));
-    const fileId = fileUploadResult.id;
-    console.log('Datei erfolgreich hochgeladen. File ID:', fileId);
+      console.log(`Datei ${fileId} bereit für Application ${applicantId}`);
+      
+      // Starte KI-Analyse im Hintergrund
+      console.log("Starte die KI-gestützte Zusammenfassung im Hintergrund...");
+      fetch('/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileId, applicationId: applicantId }),
+      }).then(response => {
+        if (!response.ok) {
+          console.warn("Die automatische Zusammenfassung ist fehlgeschlagen");
+        } else {
+          console.log("Zusammenfassung erfolgreich erstellt.");
+        }
+      }).catch(error => {
+        console.warn("Fehler bei der Background-Analyse:", error);
+      });
 
-    const applicantId = searchParams.get("applicationId");
-    if (!applicantId) {
-      throw new Error("Application-ID nicht in der URL gefunden! Der Upload kann nicht zugeordnet werden.");
+    } catch (error) {
+      console.error("Fehler beim Background-Upload:", error);
     }
+  };
 
-    // ENTFERNT: Das Application-Update wird jetzt in der API gemacht
-    console.log(`Datei ${fileId} bereit für Application ${applicantId}`);
-    
-    // -- SCHRITT 1.5: ZUSAMMENFASSUNG ERSTELLEN LASSEN --
-    console.log("Starte die KI-gestützte Zusammenfassung...");
-    const summarizeResponse = await fetch('/api/summarize', { // Geändert von '/api/s' zu '/api/summarize'
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fileId, applicationId: applicantId }),
-    });
-
-    if (!summarizeResponse.ok) {
-      const errorData = await summarizeResponse.json();
-      console.warn("Die automatische Zusammenfassung ist fehlgeschlagen:", errorData.message);
-    } else {
-      console.log("Zusammenfassung erfolgreich erstellt.");
-    }
-
-    // -- SCHRITT 2: SPEED-TEST --
-    console.log("Starte Geschwindigkeitstest...");
-    const fileUrl = '/speedtestfile.dat';
-    const fileSizeInBytes = 5 * 1024 * 1024; // 5 MB
-
-    const startTime = new Date().getTime();
-    const response = await fetch(fileUrl + '?t=' + startTime);
-
-    if (!response.ok) {
-      throw new Error(`Testdatei nicht gefunden (Status: ${response.status}).`);
-    }
-
-    await response.blob();
-    const endTime = new Date().getTime();
-    const durationInSeconds = (endTime - startTime) / 1000;
-
-    if (durationInSeconds < 0.1) {
-      navigateToNextPage();
+  const handleUploadAndContinue = async () => {
+    if (!selectedFile) {
+      alert("Bitte wähle zuerst dein Pitchdeck aus.");
       return;
     }
+    
+    setIsLoading(true);
 
-    const bitsLoaded = fileSizeInBytes * 8;
-    const speedMbps = (bitsLoaded / durationInSeconds) / 1024 / 1024;
-    console.log(`Geschwindigkeit: ${speedMbps.toFixed(2)} Mbit/s`);
+    try {
+      // Speed-Test durchführen
+      console.log("Starte Geschwindigkeitstest...");
+      const fileUrl = '/speedtestfile.dat';
+      const fileSizeInBytes = 5 * 1024 * 1024; // 5 MB
 
-    if (speedMbps < 20) {
-      setShowLowSpeedAlert(true);
-    } else {
-      navigateToNextPage();
+      const startTime = new Date().getTime();
+      const response = await fetch(fileUrl + '?t=' + startTime);
+
+      if (!response.ok) {
+        throw new Error(`Testdatei nicht gefunden (Status: ${response.status}).`);
+      }
+
+      await response.blob();
+      const endTime = new Date().getTime();
+      const durationInSeconds = (endTime - startTime) / 1000;
+
+      if (durationInSeconds < 0.1) {
+        // Starte Background-Upload und navigiere sofort weiter
+        startBackgroundUploadAndAnalysis(selectedFile);
+        navigateToNextPage();
+        return;
+      }
+
+      const bitsLoaded = fileSizeInBytes * 8;
+      const speedMbps = (bitsLoaded / durationInSeconds) / 1024 / 1024;
+      console.log(`Geschwindigkeit: ${speedMbps.toFixed(2)} Mbit/s`);
+
+      // Starte Background-Upload unabhängig von der Geschwindigkeit
+      startBackgroundUploadAndAnalysis(selectedFile);
+
+      if (speedMbps < 20) {
+        setShowLowSpeedAlert(true);
+      } else {
+        navigateToNextPage();
+      }
+    } catch (error) {
+      console.error("Ein Fehler ist aufgetreten:", error);
+      alert("Ein Fehler ist aufgetreten. Bitte überprüfe die Konsole für Details und versuche es erneut.");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Ein Fehler ist aufgetreten:", error);
-    alert("Ein Fehler ist aufgetreten. Bitte überprüfe die Konsole für Details und versuche es erneut.");
-  } finally {
-    setIsLoading(false);
   }
-}
 
   const steps = [
      { id: 1, title: "Online-Formular", description: "Grundlegende Informationen und Firmendetails.", status: "completed", icon: CheckCircle },
@@ -381,8 +391,7 @@ const handleUploadAndContinue = async () => {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {/* ### EINZIGE ÄNDERUNG IM LAYOUT IST HIER ### */}
-                Lädt hoch & analysiert Pitchdeck...
+                Prüfe Verbindung...
               </>
             ) : (
               <>
