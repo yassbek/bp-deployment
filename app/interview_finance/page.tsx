@@ -64,6 +64,9 @@ export default function InterviewPage() {
             setConnecting(false);
             console.error("ElevenLabs conversation error:", message);
         },
+        onDebug: (data) => {
+            console.log("ElevenLabs Debug:", data);
+          },
     })
 
     // GEÄNDERT: Frägt initial nur nach dem Mikrofon
@@ -318,7 +321,7 @@ export default function InterviewPage() {
                                         />
                                     </div>
                                     <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-full">
-                                        <span className="text-white text-sm font-medium">KI Agent</span>
+                                        <span className="text-white text-sm font-medium">Anne</span>
                                     </div>
                                     {conversation.isSpeaking && (
                                         <div className="absolute top-4 right-4 bg-white/30 p-2 rounded-full shadow-lg animate-pulse">

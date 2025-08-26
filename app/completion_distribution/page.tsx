@@ -1,15 +1,44 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation" 
 import Script from "next/script"
 import Image from "next/image"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { CheckCircle, Clock, Mail, Calendar, Target, Briefcase, Megaphone, DollarSign, ClipboardCheck } from "lucide-react"
+import { createDirectus, rest, staticToken, updateItem } from '@directus/sdk'; // updateItem importiert
+
+// ==================================================================
+// Directus Client Initialisierung (vereinfacht)
+// ==================================================================
+const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
+const directusToken = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
+
+if (!directusUrl || !directusToken) {
+  console.error('Directus URL oder Token sind in den Umgebungsvariablen nicht gesetzt.');
+}
+
+// HIER: Das Schema wurde komplett entfernt, um es flexibler zu machen.
+const directus = directusUrl && directusToken 
+    ? createDirectus(directusUrl).with(staticToken(directusToken)).with(rest())
+    : null;
+// ==================================================================
+
 
 export default function CompletionPage() {
     const [showSuccess, setShowSuccess] = useState(false)
+    const [npsScore, setNpsScore] = useState<number | null>(null)
+    const [npsComment, setNpsComment] = useState("")
+    const [npsSubmitted, setNpsSubmitted] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const searchParams = useSearchParams()
+    // HIER: Holt sich die ID jetzt aus dem URL-Parameter "applicationId"
+    const applicationId = searchParams.get('applicationId')
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -17,7 +46,8 @@ export default function CompletionPage() {
         }, 300)
         return () => clearTimeout(timer)
     }, [])
-
+    
+    // ... (deine applicationSteps und finalReviewSteps Arrays bleiben unverändert)
     const applicationSteps = [
         { title: "Readiness Assessment", icon: ClipboardCheck, status: "completed" },
         { title: "Impact-Reife", icon: Target, status: "completed" },
@@ -33,9 +63,35 @@ export default function CompletionPage() {
         { title: "Programmstart", description: "Bei einer Zusage beginnt deine Reise im Accelerator.", timeframe: "Nächster Jahrgang", icon: Calendar },
     ]
 
+    const handleNpsSubmit = async () => {
+        if (npsScore === null || !applicationId || !directus) {
+            console.error("Voraussetzungen für den API-Call nicht erfüllt: NPS Score, Application ID oder Directus-Client fehlt.");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // HIER: Die Methode .items('collection').updateOne(...) ist eine saubere Art, den Request zu machen
+            await directus.request(updateItem('applications', applicationId, {
+                nps: npsScore,
+                nps_comment: npsComment,
+            }));
+            
+            setNpsSubmitted(true);
+            console.log("🚀 NPS-Daten erfolgreich in Directus gespeichert!");
+
+        } catch (error) {
+            console.error("Fehler beim Speichern der NPS-Daten:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+    
+    // Der Rest der Komponente (return Statement mit JSX) bleibt exakt gleich.
+    // ...
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
             <header className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
@@ -54,11 +110,9 @@ export default function CompletionPage() {
                     </div>
                 </div>
             </header>
-
-            {/* Hauptinhalt */}
+            
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {/* Erfolgsanzeige */}
-                <div className="text-center mb-12">
+                 <div className="text-center mb-12">
                     <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full transition-all duration-700 ${showSuccess ? "bg-green-100 scale-100" : "bg-gray-100 scale-90"}`}>
                         <CheckCircle className={`transition-all duration-700 ${showSuccess ? "w-12 h-12 text-green-600" : "w-10 h-10 text-gray-400"}`} />
                     </div>
@@ -70,9 +124,7 @@ export default function CompletionPage() {
                     </p>
                 </div>
 
-                {/* Grid-Layout */}
                 <div className="grid lg:grid-cols-3 gap-8 mb-8">
-                    {/* Finale nächste Schritte */}
                     <Card className="lg:col-span-2 border-brand/50 bg-brand/5">
                         <CardHeader>
                             <CardTitle className="text-amber-900">Wie geht es jetzt weiter?</CardTitle>
@@ -101,7 +153,6 @@ export default function CompletionPage() {
                         </CardContent>
                     </Card>
                     
-                    {/* Zusammenfassung der Interviews */}
                     <div className="space-y-8">
                         <Card>
                             <CardHeader>
@@ -126,8 +177,67 @@ export default function CompletionPage() {
                         </Card>
                     </div>
                 </div>
+                
+                <div className="max-w-2xl mx-auto mb-12">
+                    <Card>
+                        {!npsSubmitted ? (
+                            <>
+                                <CardHeader>
+                                    <CardTitle>Dein Feedback ist uns wichtig</CardTitle>
+                                    <CardDescription>
+                                        Wie hat dir dieser Bewerbungsprozess gefallen?
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {!applicationId && (
+                                        <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md mb-4">
+                                            Feedback kann nicht übermittelt werden, da die Bewerbungs-ID fehlt.
+                                        </p>
+                                    )}
+                                    <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                        {Array.from({ length: 11 }, (_, i) => (
+                                            <Button
+                                                key={i}
+                                                variant={npsScore === i ? "default" : "outline"}
+                                                onClick={() => setNpsScore(i)}
+                                                className="w-10 h-10 rounded-full"
+                                                disabled={!applicationId || isSubmitting}
+                                            >
+                                                {i}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between text-xs text-gray-500 px-2">
+                                        <span>Gar nicht gut</span>
+                                        <span className="text-right">Sehr gut</span>
+                                    </div>
+                                    <div className="mt-6 space-y-2">
+                                        <Label htmlFor="nps-comment">Was ist der Hauptgrund für deine Bewertung? (Optional)</Label>
+                                        <Textarea
+                                            id="nps-comment"
+                                            placeholder="Dein Feedback hilft uns, besser zu werden..."
+                                            value={npsComment}
+                                            onChange={(e) => setNpsComment(e.target.value)}
+                                            disabled={!applicationId || isSubmitting}
+                                        />
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="justify-end">
+                                    <Button onClick={handleNpsSubmit} disabled={npsScore === null || !applicationId || isSubmitting}>
+                                        {isSubmitting ? "Wird gesendet..." : "Feedback senden"}
+                                    </Button>
+                                </CardFooter>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center p-12 text-center">
+                                <CheckCircle className="w-12 h-12 text-green-600 mb-4" />
+                                <h3 className="text-xl font-semibold">Vielen Dank!</h3>
+                                <p className="text-gray-600">Dein Feedback wurde erfolgreich übermittelt.</p>
+                            </div>
+                        )}
+                    </Card>
+                </div>
 
-                {/* Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                     <Button variant="outline" onClick={() => window.open("mailto:applications@impactfactory.de", "_blank")} size="lg">
                         <Mail className="w-4 h-4 mr-2" />
@@ -135,14 +245,11 @@ export default function CompletionPage() {
                     </Button>
                 </div>
 
-                {/* Fußnote */}
                 <div className="mt-12 text-center">
                     <p className="text-sm text-gray-500">
                         Bewerbung abgeschlossen am {new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" })}
                     </p>
                 </div>
-
-                {/* ElevenLabs Widget */}
                 
                 <elevenlabs-convai agent-id="agent_3801k25662s9fkbs58c3ytmq8s8c"></elevenlabs-convai>
                 <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" async />
