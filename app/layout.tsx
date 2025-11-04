@@ -16,8 +16,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Impact Factory Accelerator",
-  description: "Impact Factory Accelerator",
+  title: "Lilavita Lernplattform",
+  description: "Lilavita Lernplattform",
 };
 
 export default function RootLayout({
