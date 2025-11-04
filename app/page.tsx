@@ -21,7 +21,7 @@ function LoadingOverlay({ text }: { text: string }) {
 }
 
 function AppView() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {

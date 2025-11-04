@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 // HINWEIS: 'next/navigation' wurde entfernt, da es in dieser Umgebung zu einem Kompilierungsfehler führt.
 // Die Navigation wird stattdessen mit Standard-Browserfunktionen gehandhabt.
 // import { useRouter, useSearchParams } from "next/navigation"

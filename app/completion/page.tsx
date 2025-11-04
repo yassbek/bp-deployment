@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { BookOpen, Target, Users, ShieldCheck, CheckCircle, XCircle, ArrowRight, Award, Sparkles, Send } from "lucide-react"
-
+import { Target, Users, ShieldCheck, CheckCircle, XCircle, Award, Sparkles, Send } from "lucide-react"
 // Simuliert die Analyseergebnisse basierend auf dem Schulungs-PDF
 const learningModulesData = [
   {
