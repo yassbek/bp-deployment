@@ -21,6 +21,10 @@ export default function InterviewPage() {
   const [endSignal, setEndSignal] = useState(0);
   const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([]);
   const [showIntro, setShowIntro] = useState(false);
+  
+  // --- NEU ---
+  // State für den Ladebildschirm nach dem Interview
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     try {
@@ -31,28 +35,59 @@ export default function InterviewPage() {
     } catch {}
   }, []);
 
+  // --- STARK MODIFIZIERT ---
   const handleEndInterview = useCallback(async () => {
     setIsTimerActive(false);
     setEndSignal((s) => s + 1);
     const params = new URLSearchParams(searchParams);
 
-    if (!applicationId) {
-      router.push(`/completion?${params.toString()}`);
-      return;
-    }
-
+    // Wenn kein Transkript vorhanden ist, direkt weiterleiten.
+    // Die CompletionPage wird ihre statischen Fallback-Daten laden.
     if (!transcript || transcript.length === 0) {
+      // Leeren, falls alte Daten vorhanden sind
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem('dynamicLearningData');
+      }
       router.push(`/completion?${params.toString()}`);
       return;
     }
 
-    // Fire-and-forget analysis request; navigate immediately
-    fetch(`/api/analyze-transcript?type=team-reife`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript, applicationId }),
-    }).catch(() => {});
-    router.push(`/completion?${params.toString()}`);
+    // 1. Ladezustand aktivieren
+    setIsAnalyzing(true);
+
+    try {
+      // 2. API-Aufruf abwarten (nicht mehr Fire-and-Forget)
+      const response = await fetch(`/api/analyze-transcript?type=team-reife`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, applicationId }),
+      });
+
+      if (!response.ok) {
+        // Wenn die API fehlschlägt, Fehler werfen, der im catch-Block behandelt wird
+        throw new Error(`Analysis API failed with status: ${response.status}`);
+      }
+
+      // 3. JSON-Antwort (die dynamischen Module) auslesen
+      const analysisResults = await response.json();
+
+      // 4. Ergebnisse im sessionStorage speichern, damit die nächste Seite sie lesen kann
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem('dynamicLearningData', JSON.stringify(analysisResults));
+      }
+
+    } catch (error) {
+      console.error("Failed to analyze transcript:", error);
+      // 5. Bei Fehler: Alte dynamische Daten löschen, damit Fallback genutzt wird
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem('dynamicLearningData');
+      }
+    } finally {
+      // 6. Ladezustand beenden und zur nächsten Seite navigieren
+      // Dies geschieht, egal ob try oder catch erfolgreich war
+      setIsAnalyzing(false);
+      router.push(`/completion?${params.toString()}`);
+    }
   }, [applicationId, router, searchParams, transcript]);
 
   useEffect(() => {
@@ -98,6 +133,57 @@ export default function InterviewPage() {
     return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   };
 
+  // --- NEU ---
+  // Ladebildschirm, der angezeigt wird, während die API das Transkript analysiert
+  if (isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Header für Konsistenz beibehalten */}
+        <header className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-5">
+                <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
+                  <Image src="/" alt="" width={48} height={48} />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">KI-gestütztes Interview</h1>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <p className="text-gray-600"></p>
+                    <Badge
+                      variant="outline"
+                      className="border-gray-300 text-gray-600 bg-gray-50"
+                    >
+                      ○ Offline
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <Badge variant="outline" className="border-brand text-brand bg-brand/10 font-medium">
+                Schritt 1 von 5
+              </Badge>
+            </div>
+          </div>
+        </header>
+
+        {/* Lade-Indikator */}
+        <main className="flex-grow flex items-center justify-center relative z-10">
+            <div className="text-center p-10 bg-white shadow-xl rounded-2xl">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Analysiere dein Interview...</h1>
+              <p className="text-gray-600 mb-6">Dein persönlicher Lernpfad wird erstellt. Bitte warte einen Moment.</p>
+              <div className="flex justify-center items-center space-x-2">
+                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+        </main>
+        <BackgroundWave />
+      </div>
+    );
+  }
+
+  // Original-JSX für das Interview
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -192,52 +278,52 @@ export default function InterviewPage() {
             </div>
           </div>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          <div className="w-full">
-            <ConvAI
-              onConnect={onConnect}
-              onDisconnect={onDisconnect}
-              onMessage={onMessage}
-              onEnded={() => {}}
-              endSignal={endSignal}
-              avatarSrc=""
-              hideTranscript
-            />
-            <div className="mt-6 flex justify-center">
-              <Button
-                variant="outline"
-                className="rounded-full"
-                size="lg"
-                onClick={handleEndInterview}
-              >
-                Nächster Schritt
-              </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div className="w-full">
+              <ConvAI
+                onConnect={onConnect}
+                onDisconnect={onDisconnect}
+                onMessage={onMessage}
+                onEnded={() => {}}
+                endSignal={endSignal}
+                avatarSrc=""
+                hideTranscript
+              />
+              <div className="mt-6 flex justify-center">
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  size="lg"
+                  onClick={handleEndInterview}
+                >
+                  Nächster Schritt
+                </Button>
+              </div>
+            </div>
+            <div className="w-full">
+                <div className="rounded-3xl border bg-white shadow-md p-4 h-full" id="transcriptPanel">
+                  <div className="text-sm font-semibold mb-2">Live transcript</div>
+                  <div className="max-h-[540px] overflow-auto rounded border p-3 text-sm bg-white/60" id="transcriptScroll">
+                    {transcript.length === 0 ? (
+                      <div className="text-gray-500">No messages yet.</div>
+                    ) : (
+                      <ul className="space-y-3">
+                        {transcript.map((m, i) => (
+                          <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start") }>
+                            <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900") }>
+                              <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
+                                {m.role === "user" ? "You" : "AI"}
+                              </div>
+                              <div className="text-sm leading-relaxed">{m.text}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
             </div>
           </div>
-          <div className="w-full">
-              <div className="rounded-3xl border bg-white shadow-md p-4 h-full" id="transcriptPanel">
-                <div className="text-sm font-semibold mb-2">Live transcript</div>
-                <div className="max-h-[540px] overflow-auto rounded border p-3 text-sm bg-white/60" id="transcriptScroll">
-                  {transcript.length === 0 ? (
-                    <div className="text-gray-500">No messages yet.</div>
-                  ) : (
-                    <ul className="space-y-3">
-                      {transcript.map((m, i) => (
-                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start") }>
-                          <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900") }>
-                            <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
-                              {m.role === "user" ? "You" : "AI"}
-                            </div>
-                            <div className="text-sm leading-relaxed">{m.text}</div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-          </div>
-        </div>
         )}
       </main>
       <BackgroundWave />

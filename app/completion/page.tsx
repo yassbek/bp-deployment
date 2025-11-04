@@ -6,62 +6,71 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Target, Users, ShieldCheck, CheckCircle, XCircle, Award, Sparkles, Send } from "lucide-react"
-// Simuliert die Analyseergebnisse basierend auf dem Schulungs-PDF
-const learningModulesData = [
+
+// --- TYPE DEFINITIONS ---
+interface QuizAnswer {
+  text: string;
+  isCorrect: boolean;
+}
+
+interface Quiz {
+  question: string;
+  answers: QuizAnswer[];
+}
+
+interface LearningModule {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  content: string[];
+  quiz: Quiz;
+}
+
+// --- FALLBACK-DATEN ---
+const staticLearningModulesData: LearningModule[] = [
   {
     icon: ShieldCheck,
-    title: "Vertiefung: Produktvorteile",
-    description: "Stärke deine Argumentation, um die hohe Qualität von Magnesiumcitrat 130 gegenüber Drogerieprodukten hervorzuheben.",
+    title: "Vertiefung: Produktvorteile (Fallback)",
+    description: "Stärke deine Argumentation, um die hohe Qualität von Magnesiumcitrat 130 hervorzuheben.",
     content: [
-      "**Citratform:** Hat eine hohe Bioverfügbarkeit und ist besonders gut verträglich.",
-      "**Reinheit:** Apothekenqualität garantiert Reinheit und korrekte Dosierung.",
-      "**Wirkung:** Ein Allrounder für Muskeln, Nerven und den Energiestoffwechsel.",
+      "**Citratform:** Hat eine hohe Bioverfügbarkeit.",
+      "**Reinheit:** Apothekenqualität garantiert Reinheit.",
+      "**Wirkung:** Ein Allrounder für Muskeln und Nerven.",
     ],
     quiz: {
-      question: "Ein Kunde fragt nach dem Unterschied zu günstigen Produkten aus der Drogerie. Was ist dein stärkstes Argument?",
+      question: "Ein Kunde fragt nach dem Unterschied zu günstigen Produkten. Was ist dein stärkstes Argument?",
       answers: [
-        { text: "Die Citratform ist für den Körper besonders gut verfügbar und verträglich.", isCorrect: true },
+        { text: "Die Citratform ist für den Körper besonders gut verfügbar.", isCorrect: true },
         { text: "Unsere Packung sieht hochwertiger aus.", isCorrect: false },
-        { text: "Es ist teurer und daher besser.", isCorrect: false },
       ],
     },
   },
   {
     icon: Users,
-    title: "Training: Zielgruppen erkennen",
-    description: "Lerne, proaktiv die Kunden zu identifizieren, die am meisten von Magnesiumcitrat 130 profitieren.",
+    title: "Training: Zielgruppen erkennen (Fallback)",
+    description: "Lerne, proaktiv die Kunden zu identifizieren, die am meisten profitieren.",
     content: [
-      "**Wadenkrämpfe:** Ein klassisches Anzeichen für Magnesiummangel.",
-      "**Diuretika-Einnahme:** Ältere Kunden, die Entwässerungstabletten nehmen, haben oft einen erhöhten Bedarf.",
-      "**Stress & Sport:** Aktive und gestresste Menschen verbrauchen mehr Magnesium.",
+      "**Wadenkrämpfe:** Ein klassisches Anzeichen.",
+      "**Diuretika-Einnahme:** Erhöhter Bedarf.",
+      "**Stress & Sport:** Aktive Menschen verbrauchen mehr.",
     ],
     quiz: {
-      question: "Eine ältere Dame, die regelmäßig Diuretika abholt, wäre eine ideale Zielgruppe, weil...",
+      question: "Eine ältere Dame, die Diuretika nimmt, ist eine Zielgruppe, weil...",
       answers: [
+        { text: "...Diuretika den Magnesiumverlust erhöhen können.", isCorrect: true },
         { text: "...ältere Menschen immer Magnesium brauchen.", isCorrect: false },
-        { text: "...Diuretika den Magnesiumverlust im Körper erhöhen können.", isCorrect: true },
-        { text: "...sie wahrscheinlich auch Sport macht.", isCorrect: false },
-      ],
-    },
-  },
-  {
-    icon: Target,
-    title: "Meisterklasse: Einwände behandeln",
-    description: "Antworte souverän auf typische Einwände und stärke das Vertrauen deiner Kunden in deine Empfehlung.",
-    content: [
-      "**Einwand 'Zu teuer':** Bestätigen und den gesundheitlichen Nutzen (Verfügbarkeit, Reinheit) hervorheben.",
-      "**Einwand 'Gesunde Ernährung reicht':** Anerkennen, aber auf erhöhten Bedarf in bestimmten Lebenssituationen (Stress, Sport) hinweisen.",
-    ],
-    quiz: {
-      question: "Auf den Einwand 'Ich ernähre mich gesund, das reicht doch!' reagierst du am besten mit:",
-      answers: [
-        { text: "Nein, das stimmt so nicht.", isCorrect: false },
-        { text: "Das ist eine gute Basis. In stressigen Zeiten oder bei viel Sport kann der Bedarf aber trotzdem erhöht sein.", isCorrect: true },
-        { text: "Sie müssen dieses Produkt kaufen.", isCorrect: false },
       ],
     },
   },
 ];
+
+// --- Icon-Mapping ---
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  ShieldCheck: ShieldCheck,
+  Users: Users,
+  Target: Target,
+  Default: Sparkles
+};
 
 type ChatMessage = {
   role: 'user' | 'model';
@@ -69,56 +78,70 @@ type ChatMessage = {
 };
 
 export default function CompletionPage() {
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [isLoadingModules, setIsLoadingModules] = useState(true);
+  const [learningModules, setLearningModules] = useState<LearningModule[]>([]); 
   const [activeQuiz, setActiveQuiz] = useState<Record<number, { selectedAnswer: number | null; isCorrect: boolean | null }>>({});
-  const [completedModules, setCompletedModules] = useState<boolean[]>(Array(learningModulesData.length).fill(false));
-  const [quizAnswers, setQuizAnswers] = useState<(string | null)[]>(Array(learningModulesData.length).fill(null));
+  const [completedModules, setCompletedModules] = useState<boolean[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<(string | null)[]>([]);
 
   // State for Gemini Chat
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState('');
   const [isGeminiLoading, setIsGeminiLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  // Ref, um sicherzustellen, dass die Analyse nur einmal ausgelöst wird
   const analysisTriggered = useRef(false);
 
+  // --- KORRIGIERTER useEffect (ohne 'finally' und 'removeItem') ---
   useEffect(() => {
-    const timer = setTimeout(() => setIsAnalyzing(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    const storedData = sessionStorage.getItem('dynamicLearningData');
+    let modulesToLoad = staticLearningModulesData; 
 
-  // --- Gemini API Call Logic ---
+    if (storedData) {
+      console.log("Dynamische Daten gefunden!", storedData);
+      try {
+        const parsedData = JSON.parse(storedData);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          modulesToLoad = parsedData.map(module => ({
+            ...module,
+            icon: iconMap[module.icon as keyof typeof iconMap] || iconMap.Default
+          }));
+        } else {
+          console.warn("Dynamische Daten waren leer oder kein Array, nutze Fallback.");
+        }
+      } catch (e) {
+        console.error("Fehler beim Parsen der dynamischen Moduldaten, verwende Fallback.", e);
+      }
+    } else {
+      console.log("Keine dynamischen Daten gefunden, nutze Fallback.");
+    }
+
+    setLearningModules(modulesToLoad);
+    setCompletedModules(Array(modulesToLoad.length).fill(false));
+    setQuizAnswers(Array(modulesToLoad.length).fill(null));
+
+    const timer = setTimeout(() => setIsLoadingModules(false), 1500);
+    return () => clearTimeout(timer);
+  }, []); // Läuft nur einmal
+
+
+  // --- Gemini API Call Logic (unverändert) ---
   const callGeminiAPI = useCallback(async (history: ChatMessage[]) => {
     setIsGeminiLoading(true);
     try {
       const systemPrompt = "Du bist ein erfahrener Apotheken-Coach und Experte für Magnesiumcitrat 130. Deine Aufgabe ist es, die Leistung des Nutzers zu analysieren und weiterführende Fragen zum Produkt, zur Wirkung und zur Kundenberatung klar und präzise zu beantworten. Bleibe stets in deiner Rolle als Coach.";
-      
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-
-      if (!apiKey) {
-        // This log is fine for the preview environment
-        console.log("API Key is missing, but proceeding in preview environment.");
-      }
-
+      if (!apiKey) { console.log("API Key is missing, but proceeding in preview environment."); }
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
       const payload = {
         contents: history.map(msg => ({ role: msg.role, parts: [{ text: msg.text }] })),
-        systemInstruction: {
-            parts: [{ text: systemPrompt }]
-        },
+        systemInstruction: { parts: [{ text: systemPrompt }] },
       };
-
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
-      }
-
+      if (!response.ok) { throw new Error(`API call failed with status: ${response.status}`); }
       const result = await response.json();
       const modelResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Ich konnte leider keine Antwort generieren. Bitte versuche es noch einmal.";
       setChatHistory(prev => [...prev, { role: 'model', text: modelResponse }]);
@@ -130,35 +153,34 @@ export default function CompletionPage() {
     }
   }, []);
 
-  const progress = (completedModules.filter(Boolean).length / learningModulesData.length) * 100;
-  const allModulesCompleted = progress === 100;
+  const progress = learningModules.length > 0 ? (completedModules.filter(Boolean).length / learningModules.length) * 100 : 0;
+  const allModulesCompleted = progress === 100 && learningModules.length > 0;
 
   useEffect(() => {
-    if (allModulesCompleted && !analysisTriggered.current) {
-        analysisTriggered.current = true;
+    if (allModulesCompleted && !analysisTriggered.current && learningModules.length > 0) {
+      analysisTriggered.current = true;
+      const answerSummary = learningModules.map((module, i) => {
+        const question = module.quiz.question;
+        const answer = quizAnswers[i] || "Keine Antwort gegeben";
+        const correctAnswerObj = module.quiz.answers.find((a: QuizAnswer) => a.isCorrect);
+        const isCorrect = answer === correctAnswerObj?.text;
+        return `Frage: "${question}"\nGegebene Antwort: "${answer}" (${isCorrect ? 'Korrekt' : 'Falsch'})`;
+      }).join('\n\n');
 
-        const answerSummary = learningModulesData.map((module, i) => {
-            const question = module.quiz.question;
-            const answer = quizAnswers[i] || "Keine Antwort gegeben";
-            const correctAnswerObj = module.quiz.answers.find(a => a.isCorrect);
-            const isCorrect = answer === correctAnswerObj?.text;
-            return `Frage: "${question}"\nGegebene Antwort: "${answer}" (${isCorrect ? 'Korrekt' : 'Falsch'})`;
-        }).join('\n\n');
-
-        const initialUserMessage: ChatMessage = {
-            role: 'user',
-            text: `Ich habe soeben die Lernmodule abgeschlossen. Hier ist eine Zusammenfassung meiner Antworten:\n\n${answerSummary}\n\nBitte gib mir auf dieser Grundlage eine kurze, motivierende Analyse meiner Leistung und eröffne die Möglichkeit für ein weiterführendes Gespräch.`
-        };
-        callGeminiAPI([initialUserMessage]);
+      const initialUserMessage: ChatMessage = {
+        role: 'user',
+        text: `Ich habe soeben die Lernmodule abgeschlossen. Hier ist eine Zusammenfassung meiner Antworten:\n\n${answerSummary}\n\nBitte gib mir auf dieser Grundlage eine kurze, motivierende Analyse meiner Leistung und eröffne die Möglichkeit für ein weiterführendes Gespräch.`
+      };
+      callGeminiAPI([initialUserMessage]);
     }
-  }, [allModulesCompleted, callGeminiAPI, quizAnswers]);
+  }, [allModulesCompleted, callGeminiAPI, quizAnswers, learningModules]);
 
 
   const handleAnswerSelect = (moduleIndex: number, answerIndex: number) => {
     if (completedModules[moduleIndex]) return;
 
-    const isCorrect = learningModulesData[moduleIndex].quiz.answers[answerIndex].isCorrect;
-    const answerText = learningModulesData[moduleIndex].quiz.answers[answerIndex].text;
+    const isCorrect = learningModules[moduleIndex].quiz.answers[answerIndex].isCorrect;
+    const answerText = learningModules[moduleIndex].quiz.answers[answerIndex].text;
     
     setActiveQuiz(prev => ({
       ...prev,
@@ -166,9 +188,9 @@ export default function CompletionPage() {
     }));
 
     setQuizAnswers(prev => {
-        const newAnswers = [...prev];
-        newAnswers[moduleIndex] = answerText;
-        return newAnswers;
+      const newAnswers = [...prev];
+      newAnswers[moduleIndex] = answerText;
+      return newAnswers;
     });
 
     setTimeout(() => {
@@ -180,7 +202,6 @@ export default function CompletionPage() {
     }, 1000);
   };
   
-  // Effect to scroll chat to bottom
   useEffect(() => {
     chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [chatHistory]);
@@ -207,7 +228,7 @@ export default function CompletionPage() {
               <Award className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-2d font-bold text-gray-900">Auswertung & Lernpfad</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Auswertung & Lernpfad</h1>
               <p className="text-gray-600">Dein persönliches Trainingsprogramm basierend auf der Simulation.</p>
             </div>
           </div>
@@ -216,11 +237,11 @@ export default function CompletionPage() {
 
       {/* Hauptinhalt */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isAnalyzing ? (
+        {isLoadingModules ? (
           <Card className="text-center p-8">
             <CardHeader>
-              <CardTitle>Analysiere deine Antworten...</CardTitle>
-              <CardDescription>Dein persönlicher Lernpfad wird erstellt.</CardDescription>
+              <CardTitle>Lade deinen persönlichen Lernpfad...</CardTitle>
+              <CardDescription>Die Ergebnisse des Interviews werden aufbereitet.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex justify-center items-center space-x-2">
@@ -232,7 +253,6 @@ export default function CompletionPage() {
           </Card>
         ) : (
           <div>
-            {/* Lernmodule etc. bleiben unverändert... */}
             <div className="mb-8">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Dein Lernfortschritt</h2>
               <Progress value={progress} className="w-full [&>*]:bg-[#7f539d]" />
@@ -240,43 +260,50 @@ export default function CompletionPage() {
             </div>
 
             <div className="space-y-6">
-              {learningModulesData.map((module, index) => {
+              {learningModules.map((module, index) => {
                 const quizState = activeQuiz[index];
                 const isCompleted = completedModules[index];
+                const ModuleIcon = module.icon; 
                 return (
                   <Card key={index} className={`${isCompleted ? 'border-green-500' : ''}`}>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-3">
                         <div className={`w-10 h-10 ${isCompleted ? 'bg-green-100' : 'bg-[#7f539d]/20'} rounded-lg flex items-center justify-center`}>
-                          <module.icon className={`w-5 h-5 ${isCompleted ? 'text-green-600' : 'text-[#7f539d]'}`} />
+                          <ModuleIcon className={`w-5 h-5 ${isCompleted ? 'text-green-600' : 'text-[#7f539d]'}`} />
                         </div>
                         <span>{module.title}</span>
-                         {isCompleted && <CheckCircle className="w-5 h-5 text-green-500" />}
+                        {isCompleted && <CheckCircle className="w-5 h-5 text-green-500" />}
                       </CardTitle>
                       <CardDescription>{module.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <h4 className="font-semibold text-gray-800 mb-2">Lerninhalte:</h4>
                       <ul className="space-y-2 mb-6">
-                        {module.content.map((item, i) => (
-                           <li key={i} className="flex items-start space-x-2">
+                        {module.content.map((item: string, i: number) => (
+                          <li key={i} className="flex items-start space-x-2">
                             <div className="w-1.5 h-1.5 bg-[#7f539d] rounded-full mt-2 flex-shrink-0"></div>
-                             <p className="text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: item }}></p>
-                           </li>
+                            <p className="text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: item }}></p>
+                          </li>
                         ))}
                       </ul>
-                      
+                   
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h4 className="font-semibold text-gray-800 mb-3">Wissens-Check:</h4>
                         <p className="text-sm text-gray-700 mb-4">{module.quiz.question}</p>
                         <div className="space-y-2">
-                          {module.quiz.answers.map((answer, answerIndex) => {
+                          {module.quiz.answers.map((answer: QuizAnswer, answerIndex: number) => {
                             const isSelected = quizState?.selectedAnswer === answerIndex;
                             const buttonClass = isSelected
                               ? quizState.isCorrect ? 'bg-green-200 border-green-500 text-green-900' : 'bg-red-200 border-red-500 text-red-900'
                               : 'bg-white hover:bg-gray-100';
                             return (
-                              <Button key={answerIndex} variant="outline" className={`w-full justify-start text-left h-auto whitespace-normal ${buttonClass}`} onClick={() => handleAnswerSelect(index, answerIndex)} disabled={isCompleted}>
+                              <Button 
+                                key={answerIndex} 
+                                variant="outline" 
+                                className={`w-full justify-start text-left h-auto whitespace-normal ${buttonClass}`} 
+                                onClick={() => handleAnswerSelect(index, answerIndex)} 
+                                disabled={isCompleted}
+                              >
                                 {isSelected && (quizState.isCorrect ? <CheckCircle className="w-4 h-4 mr-2"/> : <XCircle className="w-4 h-4 mr-2"/>)}
                                 {answer.text}
                               </Button>
@@ -292,55 +319,55 @@ export default function CompletionPage() {
             
             {/* KI-Analyse & Chat-Sektion */}
             {allModulesCompleted && (
-                 <Card className="mt-8">
-                     <CardHeader>
-                         <CardTitle className="flex items-center space-x-2">
-                             <Sparkles className="w-6 h-6 text-[#7f539d]"/>
-                             <span>Deine persönliche KI-Analyse</span>
-                         </CardTitle>
-                         <CardDescription>Stelle hier weiterführende Fragen an deinen persönlichen Apotheken-Coach.</CardDescription>
-                     </CardHeader>
-                     <CardContent>
-                         <div ref={chatContainerRef} className="h-80 overflow-y-auto p-4 bg-gray-50 rounded-lg border mb-4 space-y-4">
-                             {chatHistory.map((msg, index) => (
-                                 <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                     <div className={`max-w-md p-3 rounded-xl ${msg.role === 'user' ? 'bg-[#7f539d] text-white' : 'bg-white border'}`}>
-                                         <p className="text-sm">{msg.text}</p>
-                                     </div>
-                                 </div>
-                             ))}
-                             {isGeminiLoading && (
-                                <div className="flex justify-start">
-                                    <div className="max-w-md p-3 rounded-xl bg-white border">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></div>
-                                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                                        </div>
-                                    </div>
-                                 </div>
-                             )}
-                         </div>
-                         <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-                            <Input 
-                                type="text"
-                                placeholder="Stelle eine Frage..."
-                                value={userInput}
-                                onChange={(e) => setUserInput(e.target.value)}
-                                disabled={isGeminiLoading}
-                                className="flex-grow"
-                            />
-                            <Button type="submit" disabled={isGeminiLoading || !userInput.trim()} className="bg-[#7f539d] hover:bg-[#6c4785] text-white">
-                                <Send className="w-4 h-4"/>
-                            </Button>
-                         </form>
-                         <div className="mt-4 flex justify-center">
-                            <Button variant="outline" onClick={() => window.location.href = '/start'}>
-                                Zurück zur Startseite
-                            </Button>
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Sparkles className="w-6 h-6 text-[#7f539d]"/>
+                    <span>Deine persönliche KI-Analyse</span>
+                  </CardTitle>
+                  <CardDescription>Stelle hier weiterführende Fragen an deinen persönlichen Apotheken-Coach.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div ref={chatContainerRef} className="h-80 overflow-y-auto p-4 bg-gray-50 rounded-lg border mb-4 space-y-4">
+                    {chatHistory.map((msg, index) => (
+                      <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-md p-3 rounded-xl ${msg.role === 'user' ? 'bg-[#7f539d] text-white' : 'bg-white border'}`}>
+                          <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                         </div>
-                     </CardContent>
-                 </Card>
+                      </div>
+                    ))}
+                    {isGeminiLoading && (
+                      <div className="flex justify-start">
+                        <div className="max-w-md p-3 rounded-xl bg-white border">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></div>
+                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-2 h-2 bg-[#7f539d]/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+                    <Input 
+                      type="text"
+                      placeholder="Stelle eine Frage..."
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      disabled={isGeminiLoading}
+                      className="flex-grow"
+                    />
+                    <Button type="submit" disabled={isGeminiLoading || !userInput.trim()} className="bg-[#7f539d] hover:bg-[#6c4785] text-white">
+                      <Send className="w-4 h-4"/>
+                    </Button>
+                  </form>
+                  <div className="mt-4 flex justify-center">
+                    <Button variant="outline" onClick={() => window.location.href = '/start'}>
+                      Zurück zur Startseite
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
@@ -348,4 +375,3 @@ export default function CompletionPage() {
     </div>
   )
 }
-

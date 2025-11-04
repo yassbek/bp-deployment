@@ -1,334 +1,163 @@
-// route.ts
+// Speicherort: src/app/api/analyze-transcript/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { teamReifePrompt } from "./prompts/readiness";
-import { impactPrompt } from "./prompts/impact";
-import { finanzierungPrompt } from "./prompts/financing";
-import { marketingPrompt } from "./prompts/marketing";
-import { distributionPrompt } from "./prompts/distribution";
+import { NextResponse } from 'next/server';
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-
-// ---- Config ----
-const INTERVIEW_CONFIGS = {
-  "team-reife": {
-    directusCollection: "applications",
-    prompt: teamReifePrompt,
-    fields: [
-      "team_kompetenz",
-      "team_dynamik",
-      "organisation",
-      "fuehrung",
-      "prozesse",
-      "kultur",
-      "ai_staerken",
-      "ai_verbesserungsbereiche",
-      "ai_empfehlungen",
-    ],
-    nextStage: "impact",
-  },
-  impact: {
-    directusCollection: "impact",
-    prompt: impactPrompt,
-    fields: [
-      "mission_sdg_fit",
-      "theory_of_change",
-      "kpi_and_data",
-      "imm_process",
-      "reporting_communication",
-      "continuous_improvement",
-      "ai_staerken",
-      "ai_verbesserungsbereiche",
-      "ai_empfehlungen",
-    ],
-    nextStage: "marketing",
-  },
-  finanzierung: {
-    directusCollection: "financing",
-    prompt: finanzierungPrompt,
-    fields: [
-      "financing_strategy_score",
-      "capital_mix_score",
-      "financial_kpis_score",
-      "impact_kpis_score",
-      "cap_table_score",
-      "investor_alignment_score",
-      "risk_strategy_score",
-      "ai_staerken",
-      "ai_verbesserungsbereiche",
-      "ai_empfehlungen",
-    ],
-    nextStage: "distribution",
-  },
-  marketing: {
-    directusCollection: "marketing",
-    prompt: marketingPrompt,
-    fields: [
-      "purpose_communication_score",
-      "market_positioning_score",
-      "growth_strategy_score",
-      "marketing_mix_score",
-      "competitive_differentiation_score",
-      "data_analytics_score",
-      "brand_authenticity_score",
-      "ai_staerken",
-      "ai_verbesserungsbereiche",
-      "ai_empfehlungen",
-    ],
-    nextStage: "finanzierung",
-  },
-  distribution: {
-    directusCollection: "distribution",
-    prompt: distributionPrompt,
-    fields: [
-      "growth_strategy_score",
-      "customer_acquisition_score",
-      "sales_funnel_score",
-      "sales_approach_score",
-      "partnership_network_score",
-      "organization_scalability_score",
-      "ai_staerken",
-      "ai_verbesserungsbereiche",
-      "ai_empfehlungen",
-    ],
-    nextStage: "completed",
-  },
-} as const;
-
-// ---- Types & guards ----
-type InterviewType = keyof typeof INTERVIEW_CONFIGS;
-function isValidInterviewType(type: string): type is InterviewType {
-  return type in INTERVIEW_CONFIGS;
-}
-
-// Build a structured-output schema for Gemini, based on the fields
-function buildResponseSchema(fields: readonly string[]) {
-  const schemaProps: Record<
-    string,
-    { type: string; items?: { type: string } }
-  > = {};
-
-  for (const f of fields) {
-    if (
-      f === "ai_staerken" ||
-      f === "ai_verbesserungsbereiche" ||
-      f === "ai_empfehlungen"
-    ) {
-      schemaProps[f] = { type: "ARRAY", items: { type: "STRING" } };
-    } else {
-      schemaProps[f] = { type: "NUMBER" };
-    }
+/**
+ * Ruft die Gemini-API auf, um ein Transkript zu analysieren und
+ * dynamische Lernmodule im JSON-Format zu generieren.
+ */
+async function callGeminiForAnalysis(transcriptText: string) {
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+  
+  if (!apiKey) {
+      console.warn("Gemini API Key fehlt. Nutze Fallback-Daten.");
+      // Fallback-Daten, falls die API nicht aufgerufen werden kann (z.B. im lokalen Test)
+      return getFallbackModules();
   }
 
-  return {
-    type: "OBJECT",
-    properties: schemaProps,
-    // Optional but nice to keep a consistent property order in responses:
-    propertyOrdering: fields,
-    // If you want to force all properties to be present:
-    // required: fields,
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+  // Der System-Prompt ist entscheidend. Er zwingt die KI,
+  // ein JSON-Array im exakten Format deiner statischen Daten zu erstellen.
+  const systemPrompt = `Du bist ein erfahrener Apotheken-Coach. Analysiere das folgende Interview-Transkript eines Mitarbeiters. Identifiziere die 3 größten Schwachstellen oder Wissenslücken.
+Erstelle basierend darauf 3 personalisierte Lernmodule mit Quizfragen.
+Antworte AUSSCHLIESSLICH mit einem JSON-Array. Jedes Objekt muss folgendem Format entsprechen:
+{
+  "icon": "ShieldCheck" | "Users" | "Target",
+  "title": "Titel des Lernmoduls",
+  "description": "Beschreibung der Schwachstelle.",
+  "content": [
+    "**Lernpunkt 1:** ...",
+    "**Lernpunkt 2:** ...",
+    "**Lernpunkt 3:** ..."
+  ],
+  "quiz": {
+    "question": "Eine relevante Quizfrage.",
+    "answers": [
+      { "text": "Antwort 1", "isCorrect": true | false },
+      { "text": "Antwort 2", "isCorrect": true | false },
+      { "text": "Antwort 3", "isCorrect": true | false }
+    ]
+  }
+}
+Achte darauf, dass immer eine Antwort "isCorrect: true" ist und die Icons (ShieldCheck, Users, Target) korrekt zugewiesen werden.`;
+
+  const userMessage = `Hier ist das Transkript:\n\n${transcriptText}`;
+
+  const payload = {
+    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    systemInstruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    generationConfig: {
+      // Fordert die API auf, direkt JSON zu senden
+      responseMimeType: "application/json",
+    }
   };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error("API call failed:", await response.text());
+      throw new Error(`API call failed with status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    const modelResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    // Die KI sollte direkt das JSON als Text zurückgeben
+    // Wir parsen es, um sicherzustellen, dass es valides JSON ist
+    return JSON.parse(modelResponseText); 
+
+  } catch (error) {
+    console.error("Fehler bei der Gemini-Analyse:", error);
+    // Bei einem Fehler (z.B. API-Key ungültig) senden wir die statischen Daten
+    return getFallbackModules();
+  }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { transcript, applicationId } = await request.json();
-
-    if (!transcript || !applicationId) {
-      return NextResponse.json(
-        { error: "Missing transcript or applicationId" },
-        { status: 400 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const interviewTypeParam = searchParams.get("type") || "team-reife";
-
-    if (!isValidInterviewType(interviewTypeParam)) {
-      return NextResponse.json(
-        { error: "Invalid interview type provided" },
-        { status: 400 }
-      );
-    }
-
-    const config = INTERVIEW_CONFIGS[interviewTypeParam];
-    const interviewType = interviewTypeParam;
-
-    // ---- Build prompt
-    const finalPrompt = config.prompt(transcript);
-
-    // ---- Structured output schema
-    const responseSchema = buildResponseSchema(config.fields);
-
-    // ---- Gemini API call (structured JSON output)
-    const body = {
-      contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        response_mime_type: "application/json",
-        response_schema: responseSchema,
-      },
-    };
-
-    const geminiRes = await fetch(
-      `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`,
+/**
+ * Dies ist eine Fallback-Funktion, die deine statischen Module zurückgibt,
+ * falls die KI-Analyse fehlschlägt.
+ */
+function getFallbackModules() {
+    return [
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text().catch(() => "");
-      console.error("Gemini request failed:", geminiRes.status, errText);
-      return NextResponse.json(
-        {
-          error: "Gemini request failed",
-          status: geminiRes.status,
-          body: errText,
+        icon: "ShieldCheck",
+        title: "Vertiefung: Produktvorteile",
+        description: "Stärke deine Argumentation, um die hohe Qualität von Magnesiumcitrat 130 hervorzuheben. (Fallback)",
+        content: [
+          "**Citratform:** Hat eine hohe Bioverfügbarkeit.",
+          "**Reinheit:** Apothekenqualität garantiert Reinheit.",
+          "**Wirkung:** Ein Allrounder für Muskeln und Nerven.",
+        ],
+        quiz: {
+          question: "Ein Kunde fragt nach dem Unterschied zu günstigen Produkten. Was ist dein stärkstes Argument?",
+          answers: [
+            { text: "Die Citratform ist für den Körper besonders gut verfügbar.", isCorrect: true },
+            { text: "Unsere Packung sieht hochwertiger aus.", isCorrect: false },
+          ],
         },
-        { status: 502 }
-      );
-    }
-
-    const geminiData = await geminiRes.json();
-    console.log("Gemini raw response:", geminiData);
-
-    // Gemini should now return strictly the JSON matching the schema in text:
-    const text: string =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    if (!text) {
-      return NextResponse.json(
-        { error: "Empty Gemini response", gemini: geminiData },
-        { status: 502 }
-      );
-    }
-
-    // This should parse cleanly thanks to response_schema:
-    let scores: Record<string, unknown>;
-    try {
-      scores = JSON.parse(text);
-    } catch (e) {
-      console.error("JSON parse failed despite schema:", e, {
-        snippet: text.slice(0, 600),
-      });
-      return NextResponse.json(
-        {
-          error: "Failed to parse JSON from Gemini",
-          snippet: text.slice(0, 600),
-          gemini: geminiData,
+      },
+      {
+        icon: "Users",
+        title: "Training: Zielgruppen erkennen",
+        description: "Lerne, proaktiv die Kunden zu identifizieren, die am meisten profitieren. (Fallback)",
+        content: [
+          "**Wadenkrämpfe:** Ein klassisches Anzeichen.",
+          "**Diuretika-Einnahme:** Erhöhter Bedarf.",
+          "**Stress & Sport:** Aktive Menschen verbrauchen mehr.",
+        ],
+        quiz: {
+          question: "Eine ältere Dame, die Diuretika nimmt, ist eine Zielgruppe, weil...",
+          answers: [
+            { text: "...Diuretika den Magnesiumverlust erhöhen können.", isCorrect: true },
+            { text: "...ältere Menschen immer Magnesium brauchen.", isCorrect: false },
+          ],
         },
-        { status: 500 }
-      );
+      },
+    ];
+}
+
+
+// Der POST-Handler für deine API-Route
+export async function POST(request: Request) {
+  try {
+    // 1. Body aus der Anfrage lesen
+    const body = await request.json();
+    const { transcript } = body;
+
+    if (!transcript || transcript.length === 0) {
+      // Wenn kein Transkript gesendet wird, Fallback-Daten nutzen
+      console.log("Kein Transkript empfangen, nutze Fallback-Module.");
+      const fallbackModules = getFallbackModules();
+      return NextResponse.json(fallbackModules);
     }
 
-    // ---- Prepare Directus payload
-    const directusPayload: Record<string, unknown> = { transcript };
+    // 2. Transkript-Objekt in einen lesbaren String umwandeln
+    const transcriptText = transcript
+      .map((msg: { role: string; text: string }) => `${msg.role}: ${msg.text}`)
+      .join('\n');
 
-    for (const field of config.fields) {
-      if (scores[field] !== undefined) {
-        directusPayload[field] = scores[field];
-      }
-    }
+    // 3. KI-Analyse aufrufen
+    const dynamicModules = await callGeminiForAnalysis(transcriptText);
 
-    // For non-applications collections, include FK
-    if (
-      interviewType === "impact" ||
-      interviewType === "finanzierung" ||
-      interviewType === "marketing" ||
-      interviewType === "distribution"
-    ) {
-      directusPayload.applications_id = applicationId;
-    }
-
-    const directusToken =
-      process.env.NEXT_PUBLIC_DIRECTUS_TOKEN || process.env.DIRECTUS_STATIC_TOKEN;
-
-    // ---- Write to Directus
-    let directusRes: Response;
-    if (
-      interviewType === "impact" ||
-      interviewType === "finanzierung" ||
-      interviewType === "marketing" ||
-      interviewType === "distribution"
-    ) {
-      const directusUrl = `${
-        process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL
-      }/items/${config.directusCollection}`;
-      directusRes = await fetch(directusUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${directusToken}`,
-        },
-        body: JSON.stringify(directusPayload),
-      });
+    // 4. Das Ergebnis (die neuen Module) an das Frontend zurücksenden
+    if (dynamicModules) {
+      return NextResponse.json(dynamicModules);
     } else {
-      const directusUrl = `${
-        process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL
-      }/items/applications/${applicationId}`;
-      directusRes = await fetch(directusUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${directusToken}`,
-        },
-        body: JSON.stringify(directusPayload),
-      });
+      // Sollte durch den Catch-Block in callGeminiForAnalysis bereits abgedeckt sein
+      return NextResponse.json(getFallbackModules(), { status: 500 });
     }
 
-    const directusData = await directusRes.json().catch(() => ({}));
-    console.log("Directus response:", directusData);
-
-    if (!directusRes.ok) {
-      return NextResponse.json(
-        { error: "Failed to write to Directus", directusData },
-        { status: directusRes.status }
-      );
-    }
-
-    // ---- Update stage on applications
-    const nextStageToUpdate = config.nextStage;
-    if (nextStageToUpdate) {
-      const updateProgressUrl = `${
-        process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL
-      }/items/applications/${applicationId}`;
-      const updateProgressPayload = {
-        current_interview_stage: nextStageToUpdate,
-      };
-
-      const updateProgressRes = await fetch(updateProgressUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${directusToken}`,
-        },
-        body: JSON.stringify(updateProgressPayload),
-      });
-
-      if (!updateProgressRes.ok) {
-        const updateErrorData = await updateProgressRes.json().catch(() => ({}));
-        console.error("Failed to update user progress in Directus:", updateErrorData);
-        // Primary write succeeded; we don't fail the whole request here.
-      } else {
-        console.log(
-          `User progress for ${applicationId} updated to: ${nextStageToUpdate}`
-        );
-      }
-    }
-
-    return NextResponse.json({
-      scores,
-      directus: directusData,
-      gemini: geminiData,
-    });
   } catch (error) {
-    console.error("Error in /api/analyze-transcript:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    console.error("Fehler im API-Handler:", error);
+    // Allgemeiner Fehler: Ebenfalls Fallback-Daten senden
+    return NextResponse.json(getFallbackModules(), { status: 500 });
   }
 }
