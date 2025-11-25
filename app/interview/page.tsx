@@ -6,9 +6,8 @@ import ConvAI from "@/components/ConvAI";
 import { BackgroundWave } from "@/components/background-wave";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer } from "lucide-react";
+import { Timer, Pill, Sparkles, Loader2, Zap, Heart, Users } from "lucide-react";
 
 export default function InterviewPage() {
   const router = useRouter();
@@ -16,79 +15,20 @@ export default function InterviewPage() {
   const applicationId = searchParams.get("applicationId");
 
   const [isConnected, setIsConnected] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(20 * 60);
+  const [timeLeft, setTimeLeft] = useState(5 * 60); // 5 Minuten für die Simulation
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [endSignal, setEndSignal] = useState(0);
   const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([]);
   const [showIntro, setShowIntro] = useState(false);
-  
-  // --- NEU ---
-  // State für den Ladebildschirm nach dem Interview
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // Loading-State für Analyse
 
   useEffect(() => {
     try {
-      const seen = typeof window !== "undefined" ? localStorage.getItem("ifa_interview_intro_seen") : "true";
-      if (!seen) {
-        setShowIntro(true);
-      }
-    } catch {}
+      // Spezifischer Key für Magnesium
+      const seen = typeof window !== "undefined" ? localStorage.getItem("pharmacy_magnesium_intro_seen") : "true";
+      if (!seen) setShowIntro(true);
+    } catch { }
   }, []);
-
-  // --- STARK MODIFIZIERT ---
-  const handleEndInterview = useCallback(async () => {
-    setIsTimerActive(false);
-    setEndSignal((s) => s + 1);
-    const params = new URLSearchParams(searchParams);
-
-    // Wenn kein Transkript vorhanden ist, direkt weiterleiten.
-    // Die CompletionPage wird ihre statischen Fallback-Daten laden.
-    if (!transcript || transcript.length === 0) {
-      // Leeren, falls alte Daten vorhanden sind
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem('dynamicLearningData');
-      }
-      router.push(`/completion?${params.toString()}`);
-      return;
-    }
-
-    // 1. Ladezustand aktivieren
-    setIsAnalyzing(true);
-
-    try {
-      // 2. API-Aufruf abwarten (nicht mehr Fire-and-Forget)
-      const response = await fetch(`/api/analyze-transcript?type=team-reife`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, applicationId }),
-      });
-
-      if (!response.ok) {
-        // Wenn die API fehlschlägt, Fehler werfen, der im catch-Block behandelt wird
-        throw new Error(`Analysis API failed with status: ${response.status}`);
-      }
-
-      // 3. JSON-Antwort (die dynamischen Module) auslesen
-      const analysisResults = await response.json();
-
-      // 4. Ergebnisse im sessionStorage speichern, damit die nächste Seite sie lesen kann
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem('dynamicLearningData', JSON.stringify(analysisResults));
-      }
-
-    } catch (error) {
-      console.error("Failed to analyze transcript:", error);
-      // 5. Bei Fehler: Alte dynamische Daten löschen, damit Fallback genutzt wird
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem('dynamicLearningData');
-      }
-    } finally {
-      // 6. Ladezustand beenden und zur nächsten Seite navigieren
-      // Dies geschieht, egal ob try oder catch erfolgreich war
-      setIsAnalyzing(false);
-      router.push(`/completion?${params.toString()}`);
-    }
-  }, [applicationId, router, searchParams, transcript]);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -99,7 +39,58 @@ export default function InterviewPage() {
     }
     const id = setInterval(() => setTimeLeft((s) => s - 1), 1000);
     return () => clearInterval(id);
-  }, [isConnected, isTimerActive, timeLeft, handleEndInterview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, isTimerActive, timeLeft]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // ANGEPASSTE handleEndInterview FUNKTION
+  // ═══════════════════════════════════════════════════════════════
+  const handleEndInterview = useCallback(async () => {
+    setIsTimerActive(false);
+    setEndSignal((s) => s + 1);
+    setIsAnalyzing(true); // Loading-State aktivieren
+
+    const params = new URLSearchParams(searchParams);
+    const nextPath = `/completion_distribution?${params.toString()}`;
+
+    // Wenn kein Transkript vorhanden, direkt weiterleiten
+    if (!transcript || transcript.length === 0) {
+      // Alte Daten löschen, damit Fallback genutzt wird
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem('dynamicLearningData');
+      }
+      router.push(nextPath);
+      return;
+    }
+
+    try {
+      // ⚠️ WICHTIG: type=pharmacy_magnesium für Magnesium-Thema
+      const response = await fetch(`/api/analyze-transcript?type=pharmacy_magnesium`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, applicationId }),
+      });
+
+      if (response.ok) {
+        const dynamicModules = await response.json();
+        // In sessionStorage speichern für die Completion-Seite
+        sessionStorage.setItem('dynamicLearningData', JSON.stringify(dynamicModules));
+        console.log("✅ Dynamische Module generiert:", dynamicModules.length);
+      } else {
+        console.error("❌ API Fehler:", response.status);
+        // Bei Fehler alte Daten löschen
+        sessionStorage.removeItem('dynamicLearningData');
+      }
+    } catch (error) {
+      console.error("❌ Fehler bei der Analyse:", error);
+      // Bei Fehler alte Daten löschen, damit Fallback genutzt wird
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem('dynamicLearningData');
+      }
+    }
+
+    router.push(nextPath);
+  }, [applicationId, router, searchParams, transcript]);
 
   const onConnect = useCallback(() => {
     setIsConnected(true);
@@ -118,7 +109,6 @@ export default function InterviewPage() {
       ...prev,
       { role: m.source, text: m.message, timestamp: new Date().toISOString() },
     ]);
-    // auto-scroll right panel to bottom
     const el = document.getElementById("transcriptScroll");
     if (el) {
       setTimeout(() => {
@@ -133,88 +123,51 @@ export default function InterviewPage() {
     return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   };
 
-  // --- NEU ---
-  // Ladebildschirm, der angezeigt wird, während die API das Transkript analysiert
+  // Loading-Overlay während der Analyse
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Header für Konsistenz beibehalten */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-5">
-                <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
-                  <Image src="/" alt="" width={48} height={48} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">KI-gestütztes Interview</h1>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <p className="text-gray-600"></p>
-                    <Badge
-                      variant="outline"
-                      className="border-gray-300 text-gray-600 bg-gray-50"
-                    >
-                      ○ Offline
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              <Badge variant="outline" className="border-brand text-brand bg-brand/10 font-medium">
-                Schritt 1 von 5
-              </Badge>
-            </div>
-          </div>
-        </header>
-
-        {/* Lade-Indikator */}
-        <main className="flex-grow flex items-center justify-center relative z-10">
-            <div className="text-center p-10 bg-white shadow-xl rounded-2xl">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Analysiere dein Interview...</h1>
-              <p className="text-gray-600 mb-6">Dein persönlicher Lernpfad wird erstellt. Bitte warte einen Moment.</p>
-              <div className="flex justify-center items-center space-x-2">
-                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-4 h-4 bg-[#7f539d] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-            </div>
-        </main>
-        <BackgroundWave />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-brand animate-spin mx-auto" />
+          <h2 className="text-xl font-semibold text-gray-900">Analysiere dein Gespräch...</h2>
+          <p className="text-gray-600">Die KI erstellt personalisierte Lernmodule für dich.</p>
+        </div>
       </div>
     );
   }
 
-  // Original-JSX für das Interview
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-5">
-              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
-                <Image src="/" alt="" width={48} height={48} />
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center shadow-sm">
+                <Pill className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">KI-gestütztes Interview</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Beratungssimulation</h1>
                 <div className="flex items-center space-x-2 mt-1">
-                  <p className="text-gray-600"></p>
+                  <p className="text-gray-600 font-medium">Szenario: Magnesiumcitrat 130</p>
                   <Badge
                     variant="outline"
                     className={`px-2 py-0.5 text-xs ${isConnected ? "border-green-500 text-green-600 bg-green-50" : "border-gray-300 text-gray-600 bg-gray-50"}`}
                   >
-                    {isConnected ? "● Live" : "○ Offline"}
+                    {isConnected ? "● Gespräch läuft" : "○ Bereit"}
                   </Badge>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               {isConnected && (
-                <Badge variant="destructive" className="font-medium tabular-nums py-1 px-3 text-base">
+                <Badge variant="destructive" className="font-medium tabular-nums py-1 px-3 text-base bg-red-100 text-red-700 border-red-200 hover:bg-red-200">
                   <Timer className="w-4 h-4 mr-2" />
                   {formatTime(timeLeft)}
                 </Badge>
               )}
               <Badge variant="outline" className="border-brand text-brand bg-brand/10 font-medium">
-                Schritt 1 von 5
+                <Sparkles className="w-3 h-3 mr-1" />
+                KI-Kunde
               </Badge>
             </div>
           </div>
@@ -222,37 +175,48 @@ export default function InterviewPage() {
       </header>
 
       <main className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Dialog open={showIntro} onOpenChange={(v) => {
-          setShowIntro(v);
-          if (!v) {
-            try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {}
-          }
-        }}>
+        <Dialog open={showIntro} onOpenChange={(v) => { setShowIntro(v); if (!v) { try { localStorage.setItem("pharmacy_magnesium_intro_seen", "true"); } catch { } } }}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>So funktioniert dein Interview</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Pill className="w-5 h-5 text-brand" />
+                Deine Aufgabe im HV
+              </DialogTitle>
               <DialogDescription>
-                <div className="space-y-3 pt-2 text-gray-700">
-                  <p>
-                    - Starte das Gespräch mit „Start conversation“ und beende es, wenn du fertig bist.
-                  </p>
-                  <p>
-                    - Wenn die Verbindung abbricht oder du unzufrieden bist, klicke einfach erneut auf „Start conversation“ und führe einen neuen Durchlauf durch.
-                  </p>
-                  <p>
-                    - Mit „Nächster Schritt“ geht es sofort weiter. Wir werten ausschließlich den letzten Durchlauf aus.
-                  </p>
+                <div className="space-y-3 pt-3 text-gray-700 text-base">
+                  <p>Ein Kunde betritt die Apotheke. Er klagt über Wadenkrämpfe, Müdigkeit oder sucht etwas zur Entspannung. Deine Ziele:</p>
+                  <ul className="list-disc pl-5 space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Users className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
+                      <span><strong>Zielgruppen erkennen:</strong> Wadenkrämpfe, Diuretika-Einnahme, Sportler, Stress</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Zap className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
+                      <span><strong>Produktvorteile nennen:</strong> Citratform = hohe Bioverfügbarkeit, Apothekenqualität</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Heart className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
+                      <span><strong>Cross-Selling:</strong> B-Vitamine, Q10, Calcium wenn passend</span>
+                    </li>
+                    <li>Souverän auf Einwände reagieren (Preis, "Ich esse gesund")</li>
+                  </ul>
+                  <div className="bg-brand/10 p-3 rounded-md text-sm text-gray-800 mt-2 border border-brand/20">
+                    <strong>💡 Tipp:</strong> Bei Diuretika-Patienten ist Magnesium besonders wichtig, da diese Medikamente den Magnesiumverlust erhöhen!
+                  </div>
                 </div>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => {
-                setShowIntro(false);
-                try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {}
-              }}>Verstanden</Button>
+              <Button
+                className="bg-brand hover:bg-brand/90 text-white"
+                onClick={() => { setShowIntro(false); try { localStorage.setItem("pharmacy_magnesium_intro_seen", "true"); } catch { } }}
+              >
+                Simulation starten
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
         {!isConnected ? (
           <div className="flex flex-col items-center">
             <div className="w-full md:w-1/2">
@@ -260,73 +224,94 @@ export default function InterviewPage() {
                 onConnect={onConnect}
                 onDisconnect={onDisconnect}
                 onMessage={onMessage}
-                onEnded={() => {}}
+                onEnded={() => { }}
                 endSignal={endSignal}
+                agentKey="pharmacy_magnesium"
                 avatarSrc=""
                 hideTranscript
               />
             </div>
-            <div className="mt-6 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <Button
                 variant="outline"
-                className="rounded-full"
+                className="rounded-full border-gray-300 hover:bg-gray-100 px-8"
                 size="lg"
                 onClick={handleEndInterview}
               >
-                Nächster Schritt
+                Überspringen / Beenden
               </Button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            <div className="w-full">
-              <ConvAI
-                onConnect={onConnect}
-                onDisconnect={onDisconnect}
-                onMessage={onMessage}
-                onEnded={() => {}}
-                endSignal={endSignal}
-                avatarSrc=""
-                hideTranscript
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start h-[calc(100vh-200px)]">
+            <div className="w-full h-full flex flex-col">
+              <div className="flex-grow relative rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-black">
+                <ConvAI
+                  onConnect={onConnect}
+                  onDisconnect={onDisconnect}
+                  onMessage={onMessage}
+                  onEnded={() => { }}
+                  endSignal={endSignal}
+                  agentKey="pharmacy_magnesium"
+                  avatarSrc="/assets/customer_avatar_generic.png"
+                  hideTranscript
+                />
+              </div>
               <div className="mt-6 flex justify-center">
                 <Button
-                  variant="outline"
-                  className="rounded-full"
+                  className="rounded-full bg-red-600 hover:bg-red-700 text-white px-8 shadow-md transition-all hover:scale-105"
                   size="lg"
                   onClick={handleEndInterview}
                 >
-                  Nächster Schritt
+                  Beratung beenden
                 </Button>
               </div>
             </div>
-            <div className="w-full">
-                <div className="rounded-3xl border bg-white shadow-md p-4 h-full" id="transcriptPanel">
-                  <div className="text-sm font-semibold mb-2">Live transcript</div>
-                  <div className="max-h-[540px] overflow-auto rounded border p-3 text-sm bg-white/60" id="transcriptScroll">
-                    {transcript.length === 0 ? (
-                      <div className="text-gray-500">No messages yet.</div>
-                    ) : (
-                      <ul className="space-y-3">
-                        {transcript.map((m, i) => (
-                          <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start") }>
-                            <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900") }>
-                              <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
-                                {m.role === "user" ? "You" : "AI"}
-                              </div>
-                              <div className="text-sm leading-relaxed">{m.text}</div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+
+            <div className="w-full h-full">
+              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg p-5 h-full flex flex-col" id="transcriptPanel">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
+                  <div className="text-sm font-bold text-gray-800 flex items-center">
+                    <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                    Live Transkript
                   </div>
+                  <span className="text-xs text-gray-400">Wird automatisch erstellt</span>
                 </div>
+
+                <div className="flex-grow overflow-auto rounded-xl p-4 text-sm bg-gray-50 space-y-4" id="transcriptScroll">
+                  {transcript.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 italic">
+                      <Sparkles className="w-8 h-8 mb-2 opacity-20" />
+                      <p>Das Gespräch beginnt...</p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-4">
+                      {transcript.map((m, i) => (
+                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={
+                            "max-w-[85%] rounded-2xl px-4 py-3 shadow-sm whitespace-pre-wrap break-words " +
+                            (m.role === "user"
+                              ? "bg-brand text-white rounded-tr-none"
+                              : "bg-white border border-gray-200 text-gray-800 rounded-tl-none")
+                          }>
+                            <div className={`mb-1 text-[10px] uppercase tracking-wide font-bold ${m.role === 'user' ? 'text-white/80' : 'text-gray-400'}`}>
+                              {m.role === "user" ? "Du (PTA/Apotheker)" : "Kunde"}
+                            </div>
+                            <div className="text-sm leading-relaxed">{m.text}</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
       </main>
-      <BackgroundWave />
+      <div className="opacity-50">
+        <BackgroundWave />
+      </div>
     </div>
   );
 }

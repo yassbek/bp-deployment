@@ -1,259 +1,435 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation" 
-import Script from "next/script"
-import Image from "next/image"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { CheckCircle, Clock, Mail, Calendar, Target, Briefcase, Megaphone, DollarSign, ClipboardCheck } from "lucide-react"
-import { createDirectus, rest, staticToken, updateItem } from '@directus/sdk'; // updateItem importiert
+import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
+import {
+  CheckCircle,
+  XCircle,
+  Sparkles,
+  Send,
+  Zap,
+  Pill,
+  Brain,
+  Activity,
+  Baby,
+  Sun
+} from "lucide-react"
 
 // ==================================================================
-// Directus Client Initialisierung (vereinfacht)
+// 1. TYPE DEFINITIONS
 // ==================================================================
-const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
-const directusToken = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN;
 
-if (!directusUrl || !directusToken) {
-  console.error('Directus URL oder Token sind in den Umgebungsvariablen nicht gesetzt.');
+interface QuizAnswer {
+  text: string;
+  isCorrect: boolean;
 }
 
-// HIER: Das Schema wurde komplett entfernt, um es flexibler zu machen.
-const directus = directusUrl && directusToken 
-    ? createDirectus(directusUrl).with(staticToken(directusToken)).with(rest())
-    : null;
-// ==================================================================
+interface Quiz {
+  question: string;
+  answers: QuizAnswer[];
+}
 
+interface LearningModule {
+  icon: string;
+  title: string;
+  description: string;
+  content: string[];
+  quiz: Quiz;
+}
+
+type ChatMessage = {
+  role: 'user' | 'model';
+  text: string;
+};
+
+// ==================================================================
+// 2. ICON MAPPING
+// ==================================================================
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Zap: Zap,
+  Pill: Pill,
+  Brain: Brain,
+  Activity: Activity,
+  Baby: Baby,
+  Sun: Sun,
+  Default: Sparkles
+};
+
+// ==================================================================
+// 3. HELPER FUNCTION (SIMPLIFIED - NO REGEX)
+// ==================================================================
+const cleanText = (text: string) => {
+  if (!text) return "";
+  // Keine komplexe Bereinigung mehr, um Build-Fehler zu vermeiden.
+  return text;
+};
+
+// ==================================================================
+// 4. FALLBACK DATA 
+// ==================================================================
+const fallbackModules: LearningModule[] = [
+  {
+    icon: "Zap",
+    title: "Basiswissen: Der B-Komplex",
+    description: "Verstehe die Synergien der 'B-Familie'.",
+    content: [
+      "<b>Die Familie:</b> B-Vitamine sind wasserlöslich und arbeiten synergistisch.",
+      "<b>Beratungs-Tipp:</b> Riboflavin (B2) färbt den Urin neongelb – harmlos.",
+      "<b>Sicherheit:</b> Überschüsse werden meist einfach ausgeschieden.",
+    ],
+    quiz: {
+      question: "Ein Kunde kommt besorgt zurück: Sein Urin ist neongelb. Deine Reaktion?",
+      answers: [
+        { text: "Das Präparat wurde nicht aufgenommen.", isCorrect: false },
+        { text: "Beruhigen: Das kommt vom Vitamin B2 und ist harmlos.", isCorrect: true },
+        { text: "Sofort absetzen, Verdacht auf Allergie.", isCorrect: false },
+      ],
+    },
+  },
+  {
+    icon: "Pill",
+    title: "Indikationen & Risikogruppen",
+    description: "Wann ist ein B-Komplex wichtig?",
+    content: [
+      "<b>Medikamente:</b> PPI (Säureblocker) hemmen die B12-Aufnahme.",
+      "<b>Migräne:</b> B2 (400 mg) kann positiv wirken.",
+      "<b>Veganer:</b> B12-Supplementierung ist essenziell.",
+    ],
+    quiz: {
+      question: "Welches B-Vitamin wird zur Migräne-Prophylaxe (Hochdosis) empfohlen?",
+      answers: [
+        { text: "Vitamin B1", isCorrect: false },
+        { text: "Vitamin B12", isCorrect: false },
+        { text: "Vitamin B2", isCorrect: true },
+      ],
+    },
+  },
+  {
+    icon: "Sun",
+    title: "Haut, Haare & Nägel",
+    description: "Einsatz in der Dermatologie.",
+    content: [
+      "<b>Nagelpilz:</b> Biotin fördert das Herauswachsen des gesunden Nagels.",
+      "<b>Akne:</b> B5 spielt eine Rolle im Fettstoffwechsel.",
+      "<b>Regeneration:</b> Biotin unterstützt die Zellerneuerung.",
+    ],
+    quiz: {
+      question: "Warum Biotin bei Nagelpilz?",
+      answers: [
+        { text: "Es tötet den Pilz ab.", isCorrect: false },
+        { text: "Es beschleunigt das Nagelwachstum.", isCorrect: true },
+        { text: "Es verhindert Ansteckung.", isCorrect: false },
+      ],
+    },
+  },
+  {
+    icon: "Baby",
+    title: "Kinderwunsch & Folsäure",
+    description: "Folsäure vs. Folat.",
+    content: [
+      "<b>Schutz:</b> Senkt Risiko für Fehlbildungen.",
+      "<b>Genetik:</b> Viele Frauen können synthetische Folsäure nicht optimal umwandeln.",
+      "<b>Lösung:</b> Bioaktives Folat (5-MTHF) nutzen.",
+    ],
+    quiz: {
+      question: "Vorteil von bioaktivem Folat (5-MTHF)?",
+      answers: [
+        { text: "Umgeht Enzymdefekte, direkt verfügbar.", isCorrect: true },
+        { text: "Ist günstiger.", isCorrect: false },
+        { text: "Muss seltener eingenommen werden.", isCorrect: false },
+      ],
+    },
+  },
+];
 
 export default function CompletionPage() {
-    const [showSuccess, setShowSuccess] = useState(false)
-    const [npsScore, setNpsScore] = useState<number | null>(null)
-    const [npsComment, setNpsComment] = useState("")
-    const [npsSubmitted, setNpsSubmitted] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [isLoadingModules, setIsLoadingModules] = useState(true);
+  const [learningModules, setLearningModules] = useState<LearningModule[]>([]);
+  const [activeQuiz, setActiveQuiz] = useState<Record<number, { selectedAnswer: number | null; isCorrect: boolean | null }>>({});
+  const [completedModules, setCompletedModules] = useState<boolean[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<(string | null)[]>([]);
 
-    const searchParams = useSearchParams()
-    // HIER: Holt sich die ID jetzt aus dem URL-Parameter "applicationId"
-    const applicationId = searchParams.get('applicationId')
+  // Chat State
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [userInput, setUserInput] = useState('');
+  const [isGeminiLoading, setIsGeminiLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const analysisTriggered = useRef(false);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowSuccess(true)
-        }, 300)
-        return () => clearTimeout(timer)
-    }, [])
-    
-    // ... (deine applicationSteps und finalReviewSteps Arrays bleiben unverändert)
-    const applicationSteps = [
-        { title: "Readiness Assessment", icon: ClipboardCheck, status: "completed" },
-        { title: "Impact-Reife", icon: Target, status: "completed" },
-        { title: "Marketing & Positionierung", icon: Megaphone, status: "completed" },
-        { title: "Finanzierungs-Reife", icon: DollarSign, status: "completed" },
-        { title: "Wachstum & Vertrieb", icon: Briefcase, status: "completed" }
-    ]
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSuccess(true), 300);
 
-    const finalReviewSteps = [
-        { title: "Prüfung der Bewerbung", description: "Unser Team prüft alle deine Interviews und Unterlagen.", timeframe: "3-5 Werktage", icon: Clock },
-        { title: "Erstes Feedback", description: "Du erhältst eine erste Rückmeldung zu deinem gesamten Readiness Assessment.", timeframe: "ca. 1 Woche", icon: Mail },
-        { title: "Entscheidung", description: "Finale Entscheidung über die Aufnahme in den Accelerator.", timeframe: "ca. 2 Wochen", icon: CheckCircle },
-        { title: "Programmstart", description: "Bei einer Zusage beginnt deine Reise im Accelerator.", timeframe: "Nächster Jahrgang", icon: Calendar },
-    ]
-
-    const handleNpsSubmit = async () => {
-        if (npsScore === null || !applicationId || !directus) {
-            console.error("Voraussetzungen für den API-Call nicht erfüllt: NPS Score, Application ID oder Directus-Client fehlt.");
+    const loadData = () => {
+      try {
+        const storedData = sessionStorage.getItem('dynamicLearningData');
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLearningModules(parsed);
+            setCompletedModules(Array(parsed.length).fill(false));
+            setQuizAnswers(Array(parsed.length).fill(null));
+            setIsLoadingModules(false);
             return;
+          }
         }
+      } catch (e) {
+        console.error("Fehler beim Laden der dynamischen Daten:", e);
+      }
+      // Fallback
+      setLearningModules(fallbackModules);
+      setCompletedModules(Array(fallbackModules.length).fill(false));
+      setQuizAnswers(Array(fallbackModules.length).fill(null));
+      setIsLoadingModules(false);
+    };
 
-        setIsSubmitting(true);
+    const loadTimer = setTimeout(loadData, 1500);
+    return () => { clearTimeout(timer); clearTimeout(loadTimer); };
+  }, []);
 
-        try {
-            // HIER: Die Methode .items('collection').updateOne(...) ist eine saubere Art, den Request zu machen
-            await directus.request(updateItem('applications', applicationId, {
-                nps: npsScore,
-                nps_comment: npsComment,
-            }));
-            
-            setNpsSubmitted(true);
-            console.log("🚀 NPS-Daten erfolgreich in Directus gespeichert!");
+  const callGeminiAPI = useCallback(async (history: ChatMessage[]) => {
+    setIsGeminiLoading(true);
+    try {
+      const systemPrompt = "Du bist ein erfahrener Apotheken-Coach. Gib kurzes, motivierendes Feedback basierend auf dem Quiz.";
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-        } catch (error) {
-            console.error("Fehler beim Speichern der NPS-Daten:", error);
-        } finally {
-            setIsSubmitting(false);
-        }
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: history.map(msg => ({ role: msg.role, parts: [{ text: msg.text }] })),
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        })
+      });
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Fehler bei der Antwort.";
+      setChatHistory(prev => [...prev, { role: 'model', text }]);
+    } catch (error) {
+      setChatHistory(prev => [...prev, { role: 'model', text: "Ein Fehler ist aufgetreten." }]);
+    } finally {
+      setIsGeminiLoading(false);
     }
-    
-    // Der Rest der Komponente (return Statement mit JSX) bleibt exakt gleich.
-    // ...
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="bg-white border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-5">
-                            <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
-                                <Image src="/impactfactory_logo.png" alt="Impact Factory Logo" width={48} height={48} />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">Bewerbung abgeschlossen!</h1>
-                                <p className="text-gray-600">Vielen Dank für deine Zeit und Mühe.</p>
-                            </div>
-                        </div>
-                        <Badge variant="outline" className="border-green-600 text-green-700 bg-green-50 font-medium">
-                            Schritt 5 von 5 - Fertig
-                        </Badge>
-                    </div>
-                </div>
-            </header>
-            
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                 <div className="text-center mb-12">
-                    <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full transition-all duration-700 ${showSuccess ? "bg-green-100 scale-100" : "bg-gray-100 scale-90"}`}>
-                        <CheckCircle className={`transition-all duration-700 ${showSuccess ? "w-12 h-12 text-green-600" : "w-10 h-10 text-gray-400"}`} />
-                    </div>
-                    <h2 className={`text-3xl font-bold mt-4 transition-opacity duration-700 ${showSuccess ? "opacity-100" : "opacity-0"}`}>
-                        Glückwunsch, du hast es geschafft!
-                    </h2>
-                    <p className={`text-gray-600 mt-2 max-w-2xl mx-auto transition-opacity duration-700 delay-200 ${showSuccess ? "opacity-100" : "opacity-0"}`}>
-                        Du hast alle Interviews für den Impact Factory Accelerator erfolgreich absolviert. Deine gesamte Bewerbung wird nun von unserem Team geprüft.
-                    </p>
-                </div>
+  }, []);
 
-                <div className="grid lg:grid-cols-3 gap-8 mb-8">
-                    <Card className="lg:col-span-2 border-brand/50 bg-brand/5">
-                        <CardHeader>
-                            <CardTitle className="text-amber-900">Wie geht es jetzt weiter?</CardTitle>
-                            <CardDescription className="text-amber-800">Das kannst du in den nächsten Wochen von uns erwarten.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-6">
-                                {finalReviewSteps.map((step, index) => {
-                                    const Icon = step.icon;
-                                    return (
-                                        <div key={index} className="flex items-start space-x-4">
-                                            <div className="flex-shrink-0 w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center">
-                                                <Icon className="w-5 h-5 text-brand" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-medium text-amber-900">{step.title}</h4>
-                                                <p className="text-sm text-amber-800 mt-0.5">{step.description}</p>
-                                                <Badge variant="outline" className="mt-2 border-brand/40 text-amber-800 text-xs">
-                                                    {step.timeframe}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
-                    <div className="space-y-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Abgeschlossene Interviews</CardTitle>
-                                <CardDescription>Alle fünf Bereiche wurden erfolgreich erfasst.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {applicationSteps.map((step, index) => {
-                                    const Icon = step.icon;
-                                    return (
-                                        <div key={index} className="text-left p-3 bg-gray-50 border rounded-lg flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
-                                                <Icon className="w-5 h-5 text-green-600" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-medium text-sm text-gray-900">{step.title}</h4>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-                
-                <div className="max-w-2xl mx-auto mb-12">
-                    <Card>
-                        {!npsSubmitted ? (
-                            <>
-                                <CardHeader>
-                                    <CardTitle>Dein Feedback ist uns wichtig</CardTitle>
-                                    <CardDescription>
-                                        Wie hat dir dieser Bewerbungsprozess gefallen?
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {!applicationId && (
-                                        <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md mb-4">
-                                            Feedback kann nicht übermittelt werden, da die Bewerbungs-ID fehlt.
-                                        </p>
-                                    )}
-                                    <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                        {Array.from({ length: 11 }, (_, i) => (
-                                            <Button
-                                                key={i}
-                                                variant={npsScore === i ? "default" : "outline"}
-                                                onClick={() => setNpsScore(i)}
-                                                className="w-10 h-10 rounded-full"
-                                                disabled={!applicationId || isSubmitting}
-                                            >
-                                                {i}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-between text-xs text-gray-500 px-2">
-                                        <span>Gar nicht gut</span>
-                                        <span className="text-right">Sehr gut</span>
-                                    </div>
-                                    <div className="mt-6 space-y-2">
-                                        <Label htmlFor="nps-comment">Was ist der Hauptgrund für deine Bewertung? (Optional)</Label>
-                                        <Textarea
-                                            id="nps-comment"
-                                            placeholder="Dein Feedback hilft uns, besser zu werden..."
-                                            value={npsComment}
-                                            onChange={(e) => setNpsComment(e.target.value)}
-                                            disabled={!applicationId || isSubmitting}
-                                        />
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="justify-end">
-                                    <Button onClick={handleNpsSubmit} disabled={npsScore === null || !applicationId || isSubmitting}>
-                                        {isSubmitting ? "Wird gesendet..." : "Feedback senden"}
-                                    </Button>
-                                </CardFooter>
-                            </>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center p-12 text-center">
-                                <CheckCircle className="w-12 h-12 text-green-600 mb-4" />
-                                <h3 className="text-xl font-semibold">Vielen Dank!</h3>
-                                <p className="text-gray-600">Dein Feedback wurde erfolgreich übermittelt.</p>
-                            </div>
-                        )}
-                    </Card>
-                </div>
+  // Trigger Analysis
+  const progress = learningModules.length > 0 ? (completedModules.filter(Boolean).length / learningModules.length) * 100 : 0;
+  const allModulesCompleted = progress === 100 && learningModules.length > 0;
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                    <Button variant="outline" onClick={() => window.open("mailto:applications@impactfactory.de", "_blank")} size="lg">
-                        <Mail className="w-4 h-4 mr-2" />
-                        Kontakt aufnehmen
-                    </Button>
-                </div>
+  useEffect(() => {
+    if (allModulesCompleted && !analysisTriggered.current && learningModules.length > 0) {
+      analysisTriggered.current = true;
+      const summary = learningModules.map((m, i) =>
+        `Frage: "${m.quiz.question}" | Antwort: "${quizAnswers[i]}"`
+      ).join('\n');
 
-                <div className="mt-12 text-center">
-                    <p className="text-sm text-gray-500">
-                        Bewerbung abgeschlossen am {new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" })}
-                    </p>
-                </div>
-                
-                <elevenlabs-convai agent-id="agent_3801k25662s9fkbs58c3ytmq8s8c"></elevenlabs-convai>
-                <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" async />
-            </main>
+      const msg: ChatMessage = { role: 'user', text: `Quiz beendet. Zusammenfassung:\n${summary}\nBitte um kurzes Feedback.` };
+      callGeminiAPI([msg]);
+    }
+  }, [allModulesCompleted, callGeminiAPI, quizAnswers, learningModules]);
+
+  const handleAnswerSelect = (modIdx: number, ansIdx: number) => {
+    if (completedModules[modIdx]) return;
+    const module = learningModules[modIdx];
+    const isCorrect = module.quiz.answers[ansIdx].isCorrect;
+
+    setActiveQuiz(prev => ({ ...prev, [modIdx]: { selectedAnswer: ansIdx, isCorrect } }));
+    setQuizAnswers(prev => { const n = [...prev]; n[modIdx] = module.quiz.answers[ansIdx].text; return n; });
+    setTimeout(() => setCompletedModules(prev => { const n = [...prev]; n[modIdx] = true; return n; }), 1000);
+  };
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim() || isGeminiLoading) return;
+    const newMsg: ChatMessage = { role: 'user', text: userInput };
+    setChatHistory([...chatHistory, newMsg]);
+    setUserInput('');
+    callGeminiAPI([...chatHistory, newMsg]);
+  };
+
+  useEffect(() => {
+    chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
+  }, [chatHistory]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-16">
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-5">
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center shadow-sm">
+                <Pill className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Training abgeschlossen</h1>
+                <p className="text-gray-600">Ergebnisse & Vertiefung</p>
+              </div>
+            </div>
+          </div>
         </div>
-    )
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center mb-10">
+          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full transition-all duration-700 ${showSuccess ? "bg-green-100 scale-100" : "bg-gray-100 scale-90"}`}>
+            <CheckCircle className={`transition-all duration-700 ${showSuccess ? "w-10 h-10 text-green-600" : "w-8 h-8 text-gray-400"}`} />
+          </div>
+          <h2 className={`text-2xl font-bold mt-4 transition-opacity duration-700 ${showSuccess ? "opacity-100" : "opacity-0"}`}>
+            Simulation erfolgreich beendet!
+          </h2>
+          <p className="text-gray-600 mt-2 max-w-2xl mx-auto">
+            Super gemacht! Nutze die folgenden Module, um dein Wissen zu festigen und dein Zertifikat freizuschalten.
+          </p>
+        </div>
+
+        {isLoadingModules ? (
+          <Card className="text-center p-8">
+            <CardHeader><CardTitle>Lade Lerninhalte...</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex justify-center items-center space-x-2">
+                <div className="w-4 h-4 bg-brand rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-4 h-4 bg-brand rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-4 h-4 bg-brand rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            <div>
+              <div className="mb-6 flex justify-between items-end">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Wissens-Check</h3>
+                  <p className="text-sm text-gray-500">Beantworte die Fragen, um die Analyse zu starten.</p>
+                </div>
+                <div className="text-right w-1/3">
+                  <p className="text-xs text-gray-500 mb-1">{Math.round(progress)}% abgeschlossen</p>
+                  <Progress value={progress} className="w-full [&>*]:bg-brand" />
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {learningModules.map((module, index) => {
+                  const quizState = activeQuiz[index];
+                  const isCompleted = completedModules[index];
+                  const ModuleIcon = iconMap[module.icon] || iconMap.Default;
+
+                  return (
+                    <Card key={index} className={`${isCompleted ? 'border-green-500 ring-1 ring-green-100' : ''}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className={`w-10 h-10 ${isCompleted ? 'bg-green-100' : 'bg-brand/10'} rounded-lg flex items-center justify-center`}>
+                            <ModuleIcon className={`w-5 h-5 ${isCompleted ? 'text-green-600' : 'text-brand'}`} />
+                          </div>
+                          {isCompleted && <CheckCircle className="w-5 h-5 text-green-500" />}
+                        </div>
+                        <CardTitle className="mt-4 text-lg">{module.title}</CardTitle>
+                        <CardDescription>{module.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">Wichtiges Praxiswissen:</h4>
+                          <ul className="space-y-2">
+                            {module.content.map((item, i) => (
+                              <li key={i} className="flex items-start text-xs text-gray-700">
+                                <div className="w-1 h-1 bg-brand rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
+                                <span dangerouslySetInnerHTML={{ __html: cleanText(item) }}></span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 mb-3">{module.quiz.question}</p>
+                          <div className="space-y-2">
+                            {module.quiz.answers.map((answer, answerIndex) => {
+                              const isSelected = quizState?.selectedAnswer === answerIndex;
+                              const buttonClass = isSelected
+                                ? quizState.isCorrect ? 'bg-green-100 border-green-500 text-green-900' : 'bg-red-100 border-red-500 text-red-900'
+                                : 'bg-white hover:bg-gray-50';
+                              return (
+                                <Button
+                                  key={answerIndex}
+                                  variant="outline"
+                                  className={`w-full justify-start text-left h-auto py-2 px-3 whitespace-normal text-sm ${buttonClass}`}
+                                  onClick={() => handleAnswerSelect(index, answerIndex)}
+                                  disabled={isCompleted}
+                                >
+                                  {isSelected && (quizState.isCorrect ? <CheckCircle className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />)}
+                                  {answer.text}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {allModulesCompleted && (
+              <Card className="bg-white border-brand/20 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2 text-brand">
+                    <Sparkles className="w-5 h-5" />
+                    <span>KI-Analyse & Coaching</span>
+                  </CardTitle>
+                  <CardDescription>Dein persönliches Feedback.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div ref={chatContainerRef} className="h-80 overflow-y-auto p-4 bg-gray-50 rounded-lg border mb-4 space-y-4">
+                    {chatHistory.map((msg, index) => (
+                      <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] p-3 rounded-xl text-sm ${msg.role === 'user' ? 'bg-brand text-white' : 'bg-white border shadow-sm'}`}>
+                          <p className="whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {isGeminiLoading && (
+                      <div className="flex justify-start">
+                        <div className="p-3 rounded-xl bg-white border">
+                          <div className="flex items-center space-x-1">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+                    <Input
+                      placeholder="Stelle eine Frage..."
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      disabled={isGeminiLoading}
+                      className="flex-grow"
+                    />
+                    <Button type="submit" disabled={isGeminiLoading || !userInput.trim()} className="bg-brand hover:bg-brand/90">
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {allModulesCompleted && (
+              <div className="flex justify-center pt-4">
+                <Button variant="outline" onClick={() => window.location.href = '/'} size="lg">
+                  Zurück zur Übersicht
+                </Button>
+              </div>
+            )}
+
+          </div>
+        )}
+      </main>
+    </div>
+  )
 }

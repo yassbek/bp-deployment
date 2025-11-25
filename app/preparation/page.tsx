@@ -80,8 +80,8 @@ export default function PreparationPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-5">
-              {/* --- Anpassung: Farbe wurde zu Violett geändert --- */}
-              <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center">
+              {/* --- Anpassung: Farbe wurde zu Brand Orange geändert --- */}
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
                 <Pill className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -100,7 +100,7 @@ export default function PreparationPage() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Lightbulb className="w-5 h-5 text-purple-600" />
+              <Lightbulb className="w-5 h-5 text-brand" />
               {/* --- Anpassung: Titel --- */}
               <span>Über diese Simulation</span>
             </CardTitle>
@@ -115,14 +115,14 @@ export default function PreparationPage() {
               In dieser Simulation üben wir, die Vorteile von Magnesiumcitrat 130 aktiv zu kommunizieren, passende Kundengruppen zu erkennen und überzeugend auf typische Fragen und Einwände zu reagieren. Ziel ist es, dass du dich im HV-Alltag sicher fühlst, das Produkt proaktiv zu empfehlen.
             </p>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="bg-brand/10 border border-brand/20 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <Info className="w-5 h-5 text-purple-600 mt-0.5" />
+                <Info className="w-5 h-5 text-brand mt-0.5" />
                 <div>
                   {/* --- Anpassung: Format-Titel --- */}
-                  <h4 className="font-medium text-purple-900 mb-2">Format der Simulation</h4>
+                  <h4 className="font-medium text-brand mb-2">Format der Simulation</h4>
                   {/* --- Anpassung: Format-Details aus dem Lernmodul --- */}
-                  <ul className="text-sm text-purple-800 space-y-1">
+                  <ul className="text-sm text-gray-800 space-y-1">
                     <li>• Dauer: 3-5 Minuten</li>
                     <li>• Format: Gesprächssimulation mit einem KI-Kunden</li>
                     <li>• Sprache: Deutsch</li>
@@ -146,8 +146,8 @@ export default function PreparationPage() {
                 <Card key={index}>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-purple-600" />
+                      <div className="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-brand" />
                       </div>
                       <span>{area.title}</span>
                     </CardTitle>
@@ -157,7 +157,7 @@ export default function PreparationPage() {
                     <div className="space-y-2">
                       {area.topics.map((topic, topicIndex) => (
                         <div key={topicIndex} className="flex items-start space-x-2">
-                          <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="w-1.5 h-1.5 bg-brand rounded-full mt-2 flex-shrink-0"></div>
                           <p className="text-sm text-gray-700">{topic}</p>
                         </div>
                       ))}
@@ -189,11 +189,10 @@ export default function PreparationPage() {
                   />
                   <label
                     htmlFor={`checklist-${index}`}
-                    className={`text-sm cursor-pointer ${
-                      checkedItems[index]
-                        ? "text-gray-900 line-through decoration-purple-600"
+                    className={`text-sm cursor-pointer ${checkedItems[index]
+                        ? "text-gray-900 line-through decoration-brand"
                         : "text-gray-700"
-                    }`}
+                      }`}
                   >
                     {item}
                   </label>
@@ -221,8 +220,8 @@ export default function PreparationPage() {
             // --- Anpassung: Funktionsaufruf bleibt, da die Logik dieselbe ist ---
             onClick={handleStartSimulation}
             disabled={!isReady}
-            // --- Anpassung: Markenfarbe wurde zu Violett geändert ---
-            className="bg-purple-600 hover:bg-purple-600/90 text-white font-medium px-8 py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            // --- Anpassung: Markenfarbe wurde zu Brand Orange geändert ---
+            className="bg-brand hover:bg-brand/90 text-white font-medium px-8 py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
             size="lg"
           >
             {/* --- Anpassung: Button-Text --- */}
@@ -237,4 +236,3 @@ export default function PreparationPage() {
     </div>
   )
 }
-

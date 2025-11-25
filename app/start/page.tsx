@@ -13,48 +13,40 @@ const trainingModules = [
     description: "Beratung bei Muskelkrämpfen, Stress und erhöhtem Bedarf. Ideal für Sportler und bei Diuretika-Einnahme.",
     path: "/preparation",
     icon: Zap,
-    color: "text-blue-500",
-    bgColor: "bg-blue-100",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
   },
   {
-    title: "D-Mannose + Cranberry",
-    description: "Simulation zur Beratung bei Harnwegsinfekten. Unterscheidung zwischen Akutfall und Prophylaxe.",
-    path: "/preparation_d-mannose",
-    icon: Droplet,
-    color: "text-red-500",
-    bgColor: "bg-red-100",
-  },
-  {
-    title: "Q10 Pro Statin",
+    title: "Vitamin B",
     description: "Coaching zur Beratung von Patienten mit Statintherapie und möglichen Nebenwirkungen wie Muskelschmerzen.",
-    path: "/preparation_q10",
+    path: "/preparation_distribution",
     icon: Heart,
-    color: "text-purple-500",
-    bgColor: "bg-purple-100",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
   },
   {
-    title: "Lysin + Zink",
+    title: "Perentrol forte",
     description: "Training zur Empfehlung bei wiederkehrendem Lippenherpes und zur allgemeinen Stärkung des Immunsystems.",
-    path: "/preparation_lysin",
+    path: "/preparation_finance",
     icon: Shield,
-    color: "text-green-500",
-    bgColor: "bg-green-100",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
   },
   {
     title: "Probiot aktiv",
     description: "Argumentationstraining zur Basisversorgung und zur Abgrenzung gegenüber Wettbewerbsprodukten.",
     path: "/preparation_probiot_aktiv",
     icon: ShieldCheck,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-100",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
   },
   {
     title: "Immun aktiv",
     description: "Empfehlung bei Infektanfälligkeit und Positionierung als hochwertige Alternative zu bekannten Marken.",
     path: "/preparation_immun",
     icon: Thermometer,
-    color: "text-orange-500",
-    bgColor: "bg-orange-100",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
   },
 ]
 
@@ -68,12 +60,12 @@ export default function StartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-brand/5 to-gray-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-brand to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <div className="w-14 h-14 bg-brand rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
               <Image
                 src="/lilavita_logo.png"
                 alt="Lilavita Logo"
@@ -109,7 +101,7 @@ export default function StartPage() {
             return (
               <Card
                 key={module.title}
-                className="group relative overflow-hidden bg-white hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-300 border border-gray-200/60 hover:border-brand/40"
+                className="group relative overflow-hidden bg-white hover:shadow-xl hover:shadow-brand/20 transition-all duration-300 border border-gray-200/60 hover:border-brand/40"
               >
                 <div className="p-6">
                   <div className="flex items-start space-x-4 mb-4">

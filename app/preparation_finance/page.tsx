@@ -1,66 +1,60 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { CheckCircle, Lightbulb, DollarSign, Briefcase, TrendingUp, ArrowRight, Info } from "lucide-react"
+import { CheckCircle, Lightbulb, Target, Users, ArrowRight, Info, Pill } from "lucide-react"
 
 export default function PreparationPage() {
     const router = useRouter()
-    const searchParams = useSearchParams();
-    const applicationId = searchParams.get("applicationId");
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({})
     const [isReady, setIsReady] = useState(false)
 
-    const readinessAreas = [
+    // Konfiguration für den Apotheken-Use-Case (Perenterol forte)
+    // Daten basieren auf der Fachinformation (Stand 08/2024)
+    const trainingAreas = [
         {
-            icon: DollarSign,
-            title: "Finanzierungsstrategie & Roadmap",
-            description: "Euer Kapitalbedarf, die Ziele und der Zeitplan der nächsten Finanzierungsrunde.",
+            icon: CheckCircle,
+            title: "Indikationen & Dosierung",
+            description: "Wann und wie oft Perenterol forte eingenommen wird.",
             topics: [
-                "Definition des Kapitalbedarfs für 12-18 Monate und dessen Herleitung",
-                "Ziele der Finanzierungsrunde (z.B. Team, Tech, Impact-Multiplikation)",
-                "Roadmap für die Phasen: Pre-Raising, Fundraising und Post-Raising",
-                "Analyse und Management von Risiken in eurer Finanzierungsstrategie",
+                "Akute Diarrhö: 1- bis 2-mal täglich 1 Kapsel (Kinder ab 2 J. & Erwachsene) [cite: 18, 19]",
+                "Reisediarrhö-Prophylaxe: Beginn 5 Tage vor Abreise (1-2x tgl. 1 Kapsel) [cite: 20]",
+                "Begleitend bei chronischer Akne: 3-mal täglich 1 Kapsel [cite: 22]",
             ],
         },
         {
-            icon: Briefcase,
-            title: "Kapitalmix & Investor:innen-Ansprache",
-            description: "Der geplante Mix aus Kapitalformen und die Profile passender Geldgeber:innen.",
+            icon: Users,
+            title: "Einnahme & Anwendungshinweise",
+            description: "Beratung zur korrekten Einnahme für volle Wirksamkeit.",
             topics: [
-                "Intelligenter Mix aus Equity, Fremdkapital, Blended Finance und Fördermitteln",
-                "Abwägung der Vor- und Nachteile verschiedener Kapitalformen für euer Modell",
-                "Identifikation passender Impact-Investor:innen, Stiftungen und Family Offices",
-                "Vorbereitete Due Diligence-Unterlagen (Data Room, One Pager, Finanzplan)",
+                "Einnahme vor den Mahlzeiten, unzerkaut mit Flüssigkeit [cite: 28]",
+                "Temperatur beachten: Nicht mit zu heißen (>50°C) oder eiskalten Speisen [cite: 34]",
+                "Kapseln können geöffnet und in Speisen/Getränke eingerührt werden [cite: 32, 33]",
             ],
         },
         {
-            icon: TrendingUp,
-            title: "Finanzmodell, KPIs & Cap Table",
-            description: "Eure Finanzplanung, die wichtigsten Kennzahlen und die Anteilsstruktur.",
+            icon: Target,
+            title: "Sicherheit & Kontraindikationen",
+            description: "Wichtige Warnhinweise für die Patientensicherheit.",
             topics: [
-                "Finanzmodell mit Bottom-Up Forecast und Szenarienanalyse",
-                "Reporting von Finanz-KPIs (MRR, CAC, LTV)",
-                "Cap-Table-Struktur (Gründer:innenanteile, ESOP, Dead Equity)",
-                "Governance- und Reporting-Struktur für Investor:innen",
+                "Kontraindikation: Patienten mit zentralem Venenkatheter (ZVK) [cite: 42]",
+                "Wechselwirkung: Keine gleichzeitige Einnahme mit Antimykotika [cite: 56]",
+                "Warnhinweis: Nicht zusammen mit Alkohol einnehmen [cite: 35]",
             ],
         },
     ]
 
     const preparationChecklist = [
-        "Ich kann unsere Finanzierungsstrategie für die nächsten 18 Monate darlegen.",
-        "Ich kann begründen, welche Kapitalformen für uns geeignet sind und welche nicht.",
-        "Ich kann unseren Kapitalbedarf exakt beziffern und dessen Berechnung erklären.",
-        "Ich kenne die Finanz-KPIs, mit denen wir unser Startup steuern.",
-        "Ich bin mit der aktuellen Struktur unseres Cap Tables vertraut.",
-        "Ich kann über beantragte oder erhaltene Förder- und philanthropische Mittel berichten.",
+        "Ich kenne die Dosierung bei akutem Durchfall (1-2 Kapseln täglich).",
+        "Ich weiß, dass bei Akne eine höhere Dosierung (3x täglich) gilt.",
+        "Ich weise darauf hin, dass Speisen nicht über 50°C heiß sein dürfen (Hefe stirbt).",
+        "Ich frage aktiv nach immunsupprimierten Patienten oder ZVK-Trägern (Kontraindikation).",
+        "Ich empfehle zusätzlich Elektrolyt- und Flüssigkeitsersatz.",
+        "Ich weiß, dass Säuglinge unter 2 Jahren vom Arzt behandelt werden müssen.",
     ]
-
-    const introText = "In diesem Gespräch wollen wir eure Strategie, euren Kapitalbedarf und eure Pläne für die Finanzierung eures Impact Startups verstehen. Das KI-gestützte Interview hilft uns, eure Finanzierungsreife einzuschätzen, um euch gezielt zu unterstützen."
 
     const handleCheckboxChange = (index: number, checked: boolean) => {
         const newCheckedItems = { ...checkedItems, [index]: checked }
@@ -68,14 +62,9 @@ export default function PreparationPage() {
         const allChecked = preparationChecklist.every((_, i) => newCheckedItems[i])
         setIsReady(allChecked)
     }
-    
-    const handleStartInterview = () => {
-        if (!applicationId) {
-            console.error("Application ID fehlt in der URL. Kann das Interview nicht starten.");
-            router.push("/");
-            return;
-        }
-        router.push(`/interview_finance?applicationId=${applicationId}&interviewType=finanzierung`);
+
+    const handleStartSimulation = () => {
+        router.push("/interview_finance")
     }
 
     return (
@@ -86,16 +75,11 @@ export default function PreparationPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-5">
                             <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
-                                <Image 
-                                    src="/impactfactory_logo.png" 
-                                    alt="Impact Factory Logo" 
-                                    width={48} 
-                                    height={48}
-                                />
+                                <Pill className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900">Finanzierungs-Vorbereitung</h1>
-                                <p className="text-gray-600">Mach dich bereit für dein KI-Interview</p>
+                                <h1 className="text-2xl font-bold text-gray-900">Beratungssimulation: Perenterol forte</h1>
+                                <p className="text-gray-600">Saccharomyces boulardii - 250 mg Kapseln</p>
                             </div>
                         </div>
                     </div>
@@ -109,26 +93,26 @@ export default function PreparationPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
                             <Lightbulb className="w-5 h-5 text-brand" />
-                            <span>Über das Interview</span>
+                            <span>Über diese Simulation</span>
                         </CardTitle>
                         <CardDescription>
-                            Unser KI-Interviewer bewertet dein Startup in drei Kernbereichen der Finanzierung.
+                            Trainiere das Beratungsgespräch zu Perenterol forte bei Diarrhö und Akne.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <p className="text-gray-700 mb-4">
-                            {introText}
+                            In dieser Simulation üben wir die Beratung zu <strong>Perenterol forte</strong>. Der Fokus liegt auf der korrekten Dosierung bei verschiedenen Indikationen (Durchfall vs. Akne), den spezifischen Einnahmehinweisen für Hefepräparate (Temperatur!) und den kritischen Sicherheitsfragen (ZVK, Immunsuppression).
                         </p>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="bg-brand/10 border border-brand/20 rounded-lg p-4">
                             <div className="flex items-start space-x-3">
-                                <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                                <Info className="w-5 h-5 text-brand mt-0.5" />
                                 <div>
-                                    <h4 className="font-medium text-blue-900 mb-2">Format des Interviews</h4>
-                                    <ul className="text-sm text-blue-800 space-y-1">
-                                        <li>• Dauer: 15-20 Minuten</li>
-                                        <li>• Format: Videogespräch mit einem KI-Agenten</li>
-                                        <li>• Sprache: Deutsch oder Englisch (deine Wahl)</li>
-                                        <li>• Aufzeichnung: Das Gespräch wird zur Auswertung aufgezeichnet</li>
+                                    <h4 className="font-medium text-brand mb-2">Format der Simulation</h4>
+                                    <ul className="text-sm text-gray-800 space-y-1">
+                                        <li>• Dauer: 3-5 Minuten</li>
+                                        <li>• Format: Gesprächssimulation mit einem KI-Kunden</li>
+                                        <li>• Szenario: Kunde fragt nach Mittel gegen Durchfall oder Reiseapotheke</li>
+                                        <li>• Ziel: Sicherer Umgang mit Kontraindikationen und Einnahmehinweisen.</li>
                                     </ul>
                                 </div>
                             </div>
@@ -138,9 +122,9 @@ export default function PreparationPage() {
 
                 {/* Themenbereiche */}
                 <div className="mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Worüber wir sprechen</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Schwerpunkte der Beratung</h2>
                     <div className="grid lg:grid-cols-3 gap-6">
-                        {readinessAreas.map((area, index) => {
+                        {trainingAreas.map((area, index) => {
                             const Icon = area.icon
                             return (
                                 <Card key={index}>
@@ -173,7 +157,7 @@ export default function PreparationPage() {
                 <Card className="mb-8">
                     <CardHeader>
                         <CardTitle>Vorbereitungs-Checkliste</CardTitle>
-                        <CardDescription>Geh diese Punkte durch, um sicherzustellen, dass du startklar bist.</CardDescription>
+                        <CardDescription>Geh diese Punkte durch, bevor du das Kundengespräch startest.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -183,15 +167,14 @@ export default function PreparationPage() {
                                         id={`checklist-${index}`}
                                         checked={checkedItems[index] || false}
                                         onCheckedChange={(checked) => handleCheckboxChange(index, checked as boolean)}
-                                        className="mt-1"
+                                        className="mt-1 data-[state=checked]:bg-brand data-[state=checked]:border-brand"
                                     />
                                     <label
                                         htmlFor={`checklist-${index}`}
-                                        className={`text-sm cursor-pointer ${
-                                            checkedItems[index]
+                                        className={`text-sm cursor-pointer ${checkedItems[index]
                                                 ? "text-gray-900 line-through decoration-brand"
                                                 : "text-gray-700"
-                                        }`}
+                                            }`}
                                     >
                                         {item}
                                     </label>
@@ -205,22 +188,22 @@ export default function PreparationPage() {
                                     <p className="font-medium text-green-900">Du bist startklar!</p>
                                 </div>
                                 <p className="text-sm text-green-700 mt-1">
-                                    Alle Punkte der Checkliste sind erledigt. Du kannst jetzt dein Interview starten.
+                                    Alle Punkte der Checkliste sind erledigt. Du kannst jetzt deine Beratungssimulation starten.
                                 </p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
-                
+
                 {/* Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                     <Button
-                        onClick={handleStartInterview}
+                        onClick={handleStartSimulation}
                         disabled={!isReady}
-                        className="bg-brand hover:bg-brand/90 text-black font-medium px-8 py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="bg-brand hover:bg-brand/90 text-white font-medium px-8 py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         size="lg"
                     >
-                        Interview starten
+                        Simulation starten
                         <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                     <Button variant="outline" onClick={() => router.push("/")} size="lg">

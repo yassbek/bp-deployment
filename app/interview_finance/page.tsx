@@ -6,27 +6,28 @@ import ConvAI from "@/components/ConvAI";
 import { BackgroundWave } from "@/components/background-wave";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer } from "lucide-react";
+import { Timer, Pill, Sparkles, Loader2, Plane, AlertTriangle } from "lucide-react";
 
-export default function InterviewFinancePage() {
+export default function InterviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicationId = searchParams.get("applicationId");
 
   const [isConnected, setIsConnected] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(20 * 60);
+  const [timeLeft, setTimeLeft] = useState(5 * 60); // 5 Minuten für die Simulation
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [endSignal, setEndSignal] = useState(0);
   const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([]);
   const [showIntro, setShowIntro] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // Loading-State für Analyse
 
   useEffect(() => {
     try {
-      const seen = typeof window !== "undefined" ? localStorage.getItem("ifa_interview_intro_seen") : "true";
+      // Spezifischer Key für Perenterol
+      const seen = typeof window !== "undefined" ? localStorage.getItem("pharmacy_perenterol_intro_seen") : "true";
       if (!seen) setShowIntro(true);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -41,27 +42,44 @@ export default function InterviewFinancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, isTimerActive, timeLeft]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // ANGEPASSTE handleEndInterview FUNKTION
+  // ═══════════════════════════════════════════════════════════════
   const handleEndInterview = useCallback(async () => {
     setIsTimerActive(false);
     setEndSignal((s) => s + 1);
+    setIsAnalyzing(true); // Loading-State aktivieren
+
     const params = new URLSearchParams(searchParams);
+    const nextPath = `/completion_distribution?${params.toString()}`;
 
-    if (!applicationId) {
-      router.push(`/completion_finance?${params.toString()}`);
-      return;
-    }
-
+    // Wenn kein Transkript vorhanden, direkt weiterleiten
     if (!transcript || transcript.length === 0) {
-      router.push(`/completion_finance?${params.toString()}`);
+      router.push(nextPath);
       return;
     }
 
-    fetch(`/api/analyze-transcript?type=finanzierung`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript, applicationId }),
-    }).catch(() => {});
-    router.push(`/completion_finance?${params.toString()}`);
+    try {
+      // ⚠️ WICHTIG: type=pharmacy_perenterol für Perenterol-Thema
+      const response = await fetch(`/api/analyze-transcript?type=pharmacy_perenterol`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, applicationId }),
+      });
+
+      if (response.ok) {
+        const dynamicModules = await response.json();
+        // In sessionStorage speichern für die Completion-Seite
+        sessionStorage.setItem('dynamicLearningData', JSON.stringify(dynamicModules));
+        console.log("✅ Dynamische Module generiert:", dynamicModules.length);
+      } else {
+        console.error("❌ API Fehler:", response.status);
+      }
+    } catch (error) {
+      console.error("❌ Fehler bei der Analyse:", error);
+    }
+
+    router.push(nextPath);
   }, [applicationId, router, searchParams, transcript]);
 
   const onConnect = useCallback(() => {
@@ -95,37 +113,51 @@ export default function InterviewFinancePage() {
     return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   };
 
+  // Loading-Overlay während der Analyse
+  if (isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-brand animate-spin mx-auto" />
+          <h2 className="text-xl font-semibold text-gray-900">Analysiere dein Gespräch...</h2>
+          <p className="text-gray-600">Die KI erstellt personalisierte Lernmodule für dich.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-5">
-              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
-                <Image src="/impactfactory_logo.png" alt="Impact Factory Logo" width={48} height={48} />
+              <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center shadow-sm">
+                <Pill className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">KI-gestütztes Interview</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Beratungssimulation</h1>
                 <div className="flex items-center space-x-2 mt-1">
-                  <p className="text-gray-600">Finanzierungs-Assessment</p>
+                  <p className="text-gray-600 font-medium">Szenario: Perenterol forte</p>
                   <Badge
                     variant="outline"
                     className={`px-2 py-0.5 text-xs ${isConnected ? "border-green-500 text-green-600 bg-green-50" : "border-gray-300 text-gray-600 bg-gray-50"}`}
                   >
-                    {isConnected ? "● Live" : "○ Offline"}
+                    {isConnected ? "● Gespräch läuft" : "○ Bereit"}
                   </Badge>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               {isConnected && (
-                <Badge variant="destructive" className="font-medium tabular-nums py-1 px-3 text-base">
+                <Badge variant="destructive" className="font-medium tabular-nums py-1 px-3 text-base bg-red-100 text-red-700 border-red-200 hover:bg-red-200">
                   <Timer className="w-4 h-4 mr-2" />
                   {formatTime(timeLeft)}
                 </Badge>
               )}
               <Badge variant="outline" className="border-brand text-brand bg-brand/10 font-medium">
-                Schritt 4 von 5
+                <Sparkles className="w-3 h-3 mr-1" />
+                KI-Kunde
               </Badge>
             </div>
           </div>
@@ -133,23 +165,46 @@ export default function InterviewFinancePage() {
       </header>
 
       <main className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Dialog open={showIntro} onOpenChange={(v) => { setShowIntro(v); if (!v) { try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {} } }}>
+        <Dialog open={showIntro} onOpenChange={(v) => { setShowIntro(v); if (!v) { try { localStorage.setItem("pharmacy_perenterol_intro_seen", "true"); } catch { } } }}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>So funktioniert dein Interview</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Pill className="w-5 h-5 text-brand" />
+                Deine Aufgabe im HV
+              </DialogTitle>
               <DialogDescription>
-                <div className="space-y-3 pt-2 text-gray-700">
-                  <p>- Starte das Gespräch mit „Start conversation“ und beende es, wenn du fertig bist.</p>
-                  <p>- Falls die Verbindung abbricht oder du unzufrieden bist: erneut auf „Start conversation“ klicken und neu starten.</p>
-                  <p>- Mit „Nächster Schritt“ geht es sofort weiter. Gewertet wird nur der letzte Durchlauf.</p>
+                <div className="space-y-3 pt-3 text-gray-700 text-base">
+                  <p>Ein Kunde kommt in die Apotheke. Er plant eine Reise oder hat akute Durchfallbeschwerden. Deine Ziele:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Plane className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
+                      <span>Bei Reiseprophylaxe: <strong>5 Tage VOR Abreise</strong> beginnen!</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                      <span>Kontraindikationen abfragen: Katheter, Immunsuppression, Hefeallergie</span>
+                    </li>
+                    <li>Korrekte Dosierung empfehlen (1-2x täglich 1 Kapsel)</li>
+                    <li>Wichtige Hinweise geben: Blister nicht durchdrücken, nicht mit heißen Getränken</li>
+                    <li>Bei Durchfall {">"} 2 Tage oder Blut/Fieber: Arzt empfehlen</li>
+                  </ul>
+                  <div className="bg-amber-50 p-3 rounded-md text-sm text-amber-800 mt-2 border border-amber-200">
+                    <strong>⚠️ Achtung:</strong> Antimykotika (Pilzmittel) beeinträchtigen die Wirkung von Perenterol!
+                  </div>
                 </div>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => { setShowIntro(false); try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {} }}>Verstanden</Button>
+              <Button
+                className="bg-brand hover:bg-brand/90 text-white"
+                onClick={() => { setShowIntro(false); try { localStorage.setItem("pharmacy_perenterol_intro_seen", "true"); } catch { } }}
+              >
+                Simulation starten
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
         {!isConnected ? (
           <div className="flex flex-col items-center">
             <div className="w-full md:w-1/2">
@@ -157,61 +212,78 @@ export default function InterviewFinancePage() {
                 onConnect={onConnect}
                 onDisconnect={onDisconnect}
                 onMessage={onMessage}
-                onEnded={() => {}}
+                onEnded={() => { }}
                 endSignal={endSignal}
-                agentKey="finance"
-                avatarSrc="/anne_profile.jpeg"
+                agentKey="pharmacy_perenterol"
+                avatarSrc="/assets/customer_avatar_generic.png"
                 hideTranscript
               />
             </div>
-            <div className="mt-6 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <Button
                 variant="outline"
-                className="rounded-full"
+                className="rounded-full border-gray-300 hover:bg-gray-100 px-8"
                 size="lg"
                 onClick={handleEndInterview}
               >
-                Nächster Schritt
+                Überspringen / Beenden
               </Button>
             </div>
           </div>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          <div className="w-full">
-            <ConvAI
-              onConnect={onConnect}
-              onDisconnect={onDisconnect}
-              onMessage={onMessage}
-              onEnded={() => {}}
-              endSignal={endSignal}
-              agentKey="finance"
-              avatarSrc="/anne_profile.jpeg"
-              hideTranscript
-            />
-            <div className="mt-6 flex justify-center">
-              <Button
-                variant="outline"
-                className="rounded-full"
-                size="lg"
-                onClick={handleEndInterview}
-              >
-                Nächster Schritt
-              </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start h-[calc(100vh-200px)]">
+            <div className="w-full h-full flex flex-col">
+              <div className="flex-grow relative rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-black">
+                <ConvAI
+                  onConnect={onConnect}
+                  onDisconnect={onDisconnect}
+                  onMessage={onMessage}
+                  onEnded={() => { }}
+                  endSignal={endSignal}
+                  agentKey="pharmacy_perenterol"
+                  avatarSrc=""
+                  hideTranscript
+                />
+              </div>
+              <div className="mt-6 flex justify-center">
+                <Button
+                  className="rounded-full bg-red-600 hover:bg-red-700 text-white px-8 shadow-md transition-all hover:scale-105"
+                  size="lg"
+                  onClick={handleEndInterview}
+                >
+                  Beratung beenden
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="w-full">
-              <div className="rounded-3xl border bg-white shadow-md p-4 h-full" id="transcriptPanel">
-                <div className="text-sm font-semibold mb-2">Live transcript</div>
-                <div className="max-h-[540px] overflow-auto rounded border p-3 text-sm bg-white/60" id="transcriptScroll">
+
+            <div className="w-full h-full">
+              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg p-5 h-full flex flex-col" id="transcriptPanel">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
+                  <div className="text-sm font-bold text-gray-800 flex items-center">
+                    <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                    Live Transkript
+                  </div>
+                  <span className="text-xs text-gray-400">Wird automatisch erstellt</span>
+                </div>
+
+                <div className="flex-grow overflow-auto rounded-xl p-4 text-sm bg-gray-50 space-y-4" id="transcriptScroll">
                   {transcript.length === 0 ? (
-                    <div className="text-gray-500">No messages yet.</div>
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 italic">
+                      <Sparkles className="w-8 h-8 mb-2 opacity-20" />
+                      <p>Das Gespräch beginnt...</p>
+                    </div>
                   ) : (
-                    <ul className="space-y-3">
+                    <ul className="space-y-4">
                       {transcript.map((m, i) => (
-                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start") }>
-                          <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900") }>
-                            <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
-                              {m.role === "user" ? "You" : "AI"}
+                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={
+                            "max-w-[85%] rounded-2xl px-4 py-3 shadow-sm whitespace-pre-wrap break-words " +
+                            (m.role === "user"
+                              ? "bg-brand text-white rounded-tr-none"
+                              : "bg-white border border-gray-200 text-gray-800 rounded-tl-none")
+                          }>
+                            <div className={`mb-1 text-[10px] uppercase tracking-wide font-bold ${m.role === 'user' ? 'text-white/80' : 'text-gray-400'}`}>
+                              {m.role === "user" ? "Du (PTA/Apotheker)" : "Kunde"}
                             </div>
                             <div className="text-sm leading-relaxed">{m.text}</div>
                           </div>
@@ -221,11 +293,13 @@ export default function InterviewFinancePage() {
                   )}
                 </div>
               </div>
+            </div>
           </div>
-        </div>
         )}
       </main>
-      <BackgroundWave />
+      <div className="opacity-50">
+        <BackgroundWave />
+      </div>
     </div>
   );
 }
