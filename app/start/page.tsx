@@ -18,8 +18,8 @@ const trainingModules = [
     hoverShadow: "hover:shadow-orange-300/50",
   },
   {
-    title: "Vitamin D",
-    description: "Coaching zur Beratung von Patienten mit Vitamin-D-Mangel, besonders in den Wintermonaten und bei Risikogruppen.",
+    title: "Vitamin B",
+    description: "Coaching zur Beratung von Patienten mit Vitamin-B-Mangel, besonders in den Wintermonaten und bei Risikogruppen.",
     path: "/preparation_distribution",
     icon: Sun,
     gradient: "from-yellow-400 to-amber-500",
