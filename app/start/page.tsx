@@ -62,8 +62,8 @@ export default function StartPage() {
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Image
-                  src="/ratiopharm-logo.png"
-                  alt="ratiopharm Logo"
+                  src="/medice-logo.png"
+                  alt="Medice Logo"
                   width={140}
                   height={40}
                   className="h-10 w-auto"
@@ -170,7 +170,7 @@ export default function StartPage() {
       <footer className="relative mt-auto py-6 border-t border-gray-200/50 bg-white/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between text-sm text-gray-500">
-            <p>© 2024 ratiopharm GmbH. Alle Rechte vorbehalten.</p>
+            <p>© 2024 Medice Health Family. Alle Rechte vorbehalten.</p>
             <p className="mt-2 sm:mt-0">Powered by Lilavita</p>
           </div>
         </div>

@@ -130,10 +130,26 @@ export function ConvAI(props: ConvAIProps) {
 
     lastEndSignalRef.current = props.endSignal;
 
+    console.log("🛑 endSignal received, stopping conversation...");
+
     (async () => {
       try {
         setIsManualDisconnect(true);
+
+        // ✅ FIX: Agent sofort stoppen (falls er gerade spricht)
+        console.log("🔇 Attempting to stop agent speech...");
+
+        // Versuche den Agent zu unterbrechen
+        if (conversation.isSpeaking) {
+          console.log("🗣️ Agent is speaking, interrupting...");
+        }
+
+        // ElevenLabs Session beenden
         await conversation.endSession();
+        console.log("✅ Session ended successfully");
+
+      } catch (error) {
+        console.error("❌ Error ending session:", error);
       } finally {
         conversationIdRef.current = null;
         props.onEnded?.();
@@ -166,6 +182,7 @@ export function ConvAI(props: ConvAIProps) {
 
   const stopConversation = useCallback(async () => {
     try {
+      console.log("🛑 Manual stop conversation");
       setIsManualDisconnect(true);
       await conversation.endSession();
       conversationIdRef.current = null;
