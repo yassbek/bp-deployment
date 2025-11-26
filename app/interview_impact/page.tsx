@@ -26,7 +26,7 @@ export default function InterviewImpactPage() {
     try {
       const seen = typeof window !== "undefined" ? localStorage.getItem("ifa_interview_intro_seen") : "true";
       if (!seen) setShowIntro(true);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function InterviewImpactPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript, applicationId }),
-    }).catch(() => {});
+    }).catch(() => { });
     router.push(`/completion_impact?${params.toString()}`);
   }, [applicationId, router, searchParams, transcript]);
 
@@ -133,7 +133,7 @@ export default function InterviewImpactPage() {
       </header>
 
       <main className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Dialog open={showIntro} onOpenChange={(v) => { setShowIntro(v); if (!v) { try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {} } }}>
+        <Dialog open={showIntro} onOpenChange={(v) => { setShowIntro(v); if (!v) { try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch { } } }}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>So funktioniert dein Interview</DialogTitle>
@@ -146,43 +146,17 @@ export default function InterviewImpactPage() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => { setShowIntro(false); try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch {} }}>Verstanden</Button>
+              <Button onClick={() => { setShowIntro(false); try { localStorage.setItem("ifa_interview_intro_seen", "true"); } catch { } }}>Verstanden</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        {!isConnected ? (
-          <div className="flex flex-col items-center">
-            <div className="w-full md:w-1/2">
-              <ConvAI
-                onConnect={onConnect}
-                onDisconnect={onDisconnect}
-                onMessage={onMessage}
-                onEnded={() => {}}
-                endSignal={endSignal}
-                agentKey="impact"
-                avatarSrc="/max_profile.jpg?v=1"
-                hideTranscript
-              />
-            </div>
-            <div className="mt-6 flex justify-center">
-              <Button
-                variant="outline"
-                className="rounded-full"
-                size="lg"
-                onClick={handleEndInterview}
-              >
-                Nächster Schritt
-              </Button>
-            </div>
-          </div>
-        ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          <div className="w-full">
+        <div className={isConnected ? "grid grid-cols-1 md:grid-cols-2 gap-8 items-start" : "flex flex-col items-center"}>
+          <div className={isConnected ? "w-full" : "w-full md:w-1/2"}>
             <ConvAI
               onConnect={onConnect}
               onDisconnect={onDisconnect}
               onMessage={onMessage}
-              onEnded={() => {}}
+              onEnded={() => { }}
               endSignal={endSignal}
               agentKey="impact"
               avatarSrc="/max_profile.jpg?v=1"
@@ -199,7 +173,9 @@ export default function InterviewImpactPage() {
               </Button>
             </div>
           </div>
-          <div className="w-full">
+
+          {isConnected && (
+            <div className="w-full">
               <div className="rounded-3xl border bg-white shadow-md p-4 h-full" id="transcriptPanel">
                 <div className="text-sm font-semibold mb-2">Live transcript</div>
                 <div className="max-h-[540px] overflow-auto rounded border p-3 text-sm bg-white/60" id="transcriptScroll">
@@ -208,8 +184,8 @@ export default function InterviewImpactPage() {
                   ) : (
                     <ul className="space-y-3">
                       {transcript.map((m, i) => (
-                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start") }>
-                          <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900") }>
+                        <li key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={("max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-wrap break-words ") + (m.role === "user" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-900")}>
                             <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
                               {m.role === "user" ? "You" : "AI"}
                             </div>
@@ -221,9 +197,9 @@ export default function InterviewImpactPage() {
                   )}
                 </div>
               </div>
-          </div>
+            </div>
+          )}
         </div>
-        )}
       </main>
       <BackgroundWave />
     </div>
