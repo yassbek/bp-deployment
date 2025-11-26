@@ -51,7 +51,7 @@ export default function InterviewPage() {
     setIsAnalyzing(true); // Loading-State aktivieren
 
     const params = new URLSearchParams(searchParams);
-    const nextPath = `/completion_distribution?${params.toString()}`;
+    const nextPath = `/completion?${params.toString()}`;
 
     // Wenn kein Transkript vorhanden, direkt weiterleiten
     if (!transcript || transcript.length === 0) {
