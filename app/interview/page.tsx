@@ -41,6 +41,14 @@ export default function InterviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, isTimerActive, timeLeft]);
 
+  // Auto-scroll to bottom when transcript changes
+  useEffect(() => {
+    const el = document.getElementById("transcriptScroll");
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [transcript]);
+
   const handleEndInterview = useCallback(async () => {
     console.log("🛑 handleEndInterview aufgerufen");
 
@@ -148,6 +156,7 @@ export default function InterviewPage() {
     );
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -231,7 +240,7 @@ export default function InterviewPage() {
 
         <div className={isConnected ? "grid grid-cols-1 md:grid-cols-2 gap-8 items-start h-[calc(100vh-200px)]" : "flex flex-col items-center"}>
           <div className={isConnected ? "w-full h-full flex flex-col" : "w-full md:w-1/2"}>
-            <div className={isConnected ? "flex-grow relative rounded-2xl overflow-hidden shadow-lg border border-gray-200 bg-black" : ""}>
+            <div className={isConnected ? "relative rounded-3xl overflow-hidden shadow-lg border border-gray-200 bg-white" : ""}>
               <ConvAI
                 onConnect={onConnect}
                 onDisconnect={onDisconnect}
@@ -267,7 +276,7 @@ export default function InterviewPage() {
 
           {isConnected && (
             <div className="w-full h-full">
-              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg p-5 h-full flex flex-col" id="transcriptPanel">
+              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg p-5 h-[800px] flex flex-col" id="transcriptPanel">
                 <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
                   <div className="text-sm font-bold text-gray-800 flex items-center">
                     <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
@@ -276,7 +285,7 @@ export default function InterviewPage() {
                   <span className="text-xs text-gray-400">Wird automatisch erstellt</span>
                 </div>
 
-                <div className="flex-grow overflow-auto rounded-xl p-4 text-sm bg-gray-50 space-y-4" id="transcriptScroll">
+                <div className="flex-grow overflow-auto min-h-0 rounded-xl p-4 text-sm bg-gray-50 space-y-4" id="transcriptScroll">
                   {transcript.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400 italic">
                       <Sparkles className="w-8 h-8 mb-2 opacity-20" />
