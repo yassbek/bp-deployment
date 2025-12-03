@@ -1,6 +1,7 @@
 // Speicherort: src/app/api/analyze-transcript/route.ts
 
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 // ==================================================================
 // 1. TYPE DEFINITIONS
@@ -183,27 +184,28 @@ FACHWISSEN MAGNESIUMCITRAT 130:
 - Cross-Selling: B-Vitamine (Energiestoffwechsel), Q10 (Herzmuskel), Calcium (Knochen)
 - Wirkung: Unterstützt Muskel- und Nervenfunktion, Energiestoffwechsel, Elektrolytgleichgewicht
 
-Identifiziere basierend auf dem Gespräch:
-1. Wurden Zielgruppen richtig erkannt?
-2. Wurden Verkaufsargumente (Citratform, Qualität) genannt?
-3. Wurden Kundeneinwände souverän beantwortet?
-4. Wurden Cross-Selling-Chancen genutzt?
+AUFGABE:
+Analysiere das Gespräch und identifiziere KONKRETE Schwachstellen oder suboptimale Antworten des Mitarbeiters.
+Erstelle 4 Lernmodule, die GENAU diese Schwachstellen adressieren.
 
-Erstelle genau 4 personalisierte Lernmodule, die auf die Gesprächsanalyse zugeschnitten sind.
+WICHTIG:
+- Jedes Modul muss einen konkreten Fehler oder eine verpasste Chance aus dem Gespräch aufgreifen.
+- Zeige im "content" Array explizit den Kontrast: "Deine Antwort" (oder was fehlte) vs. "Die perfekte Antwort".
+- Wenn das Gespräch sehr gut war, fokussiere auf Vertiefung oder schwierige hypothetische Einwände.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Array. Format:
 [
   {
     "icon": "ShieldCheck" | "Users" | "Target" | "Zap" | "Heart" | "Activity",
-    "title": "Titel des Moduls",
-    "description": "Kurze Beschreibung was gelernt wird",
+    "title": "Titel des Moduls (z.B. 'Fehleranalyse: Preis-Einwand')",
+    "description": "Kurze Beschreibung",
     "content": [
-      "<b>Punkt 1:</b> Erklärung...",
-      "<b>Punkt 2:</b> Erklärung...",
-      "<b>Punkt 3:</b> Erklärung..."
+      "<b>Situation:</b> Der Kunde fragte nach dem Preis...",
+      "<b>Optimierung:</b> Du hast nur den Preis genannt. Besser wäre: Erst den Nutzen (Bioverfügbarkeit) betonen.",
+      "<b>Perfekte Antwort:</b> 'Ja, es ist etwas teurer, aber dafür erhalten Sie reines Magnesiumcitrat, das Ihr Körper sofort aufnehmen kann - im Gegensatz zu günstigen Oxiden.'"
     ],
     "quiz": {
-      "question": "Praxisnahe Quizfrage aus dem HV-Alltag",
+      "question": "Praxisnahe Quizfrage passend zum Fehler",
       "answers": [
         { "text": "Antwort A", "isCorrect": false },
         { "text": "Antwort B", "isCorrect": true },
@@ -623,6 +625,92 @@ export async function POST(request: Request) {
     const result = await callGeminiForAnalysis(transcriptText, topicType, includeOverview);
 
     console.log(`[API] Analyse fertig.`);
+
+    // ─────────────────────────────────────────────────────────────────
+    // SAVE TO SUPABASE IF APPLICATION ID IS PRESENT
+    // ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // SAVE TO SUPABASE IF APPLICATION ID IS PRESENT
+    if (applicationId) {
+      try {
+        const supabase = createClient();
+
+        // Prepare data
+        let modulesToSave: LearningModule[] = [];
+        let overviewToSave = "";
+
+        if (Array.isArray(result)) {
+          modulesToSave = result;
+        } else if ((result as any).modules) {
+          modulesToSave = (result as any).modules;
+          overviewToSave = (result as any).overview || "";
+        }
+
+        // 1. Update user_progress FIRST to ensure parent record exists
+        const { error: progressError } = await supabase
+          .from('user_progress')
+          .upsert({
+            application_id: applicationId,
+            status: 'interview_completed',
+            interview_transcript: transcript,
+            training_overview: overviewToSave,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'application_id' });
+
+        if (progressError) {
+          console.error("[API] Failed to save user_progress:", progressError);
+          // If this fails, we probably shouldn't proceed with child records
+          throw progressError;
+        }
+
+        // 2. Create Interview Record
+        const { data: interviewData, error: interviewError } = await supabase
+          .from('interviews')
+          .insert({
+            application_id: applicationId,
+            transcript: transcript,
+            analysis: JSON.stringify(result), // Save raw analysis
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (interviewError) {
+          console.error("[API] Failed to save interview:", interviewError);
+        }
+
+        const interviewId = interviewData?.id;
+
+        // 3. Insert modules into learning_modules linked to interview
+        if (modulesToSave.length > 0) {
+          const modulesData = modulesToSave.map(m => ({
+            application_id: applicationId,
+            interview_id: interviewId, // Link to specific interview
+            title: m.title,
+            description: m.description,
+            category: topicType,
+            difficulty: 'adaptive',
+            content: m.content,
+            quiz: m.quiz,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          }));
+
+          const { error: modulesError } = await supabase
+            .from('learning_modules')
+            .insert(modulesData);
+
+          if (modulesError) {
+            console.error("[API] Failed to save learning_modules:", modulesError);
+          } else {
+            console.log("[API] Learning modules saved successfully.");
+          }
+        }
+
+      } catch (dbError) {
+        console.error("[API] Database operation failed:", dbError);
+      }
+    }
 
     if (includeOverview) {
       // Wenn result ein Array ist, dann ist es nur modules (Fallback oder altes Format)

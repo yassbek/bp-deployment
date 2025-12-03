@@ -209,6 +209,28 @@ export default function PreparationPage() {
                 </p>
               </div>
             )}
+            {!isReady && (
+              <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3">
+                    <Info className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-purple-900">Unsicher bei einigen Punkten?</h4>
+                      <p className="text-sm text-purple-700 mt-1">
+                        Frische dein Wissen auf, bevor du startest. Wir haben eine kompakte Übersicht für dich vorbereitet.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="bg-white text-purple-700 border-purple-200 hover:bg-purple-50 hover:text-purple-800 shrink-0"
+                    onClick={() => window.location.href = "/magnesium-info"}
+                  >
+                    Zur Wissens-Übersicht
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

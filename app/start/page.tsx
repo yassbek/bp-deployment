@@ -4,16 +4,82 @@ import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Zap, Sparkles } from "lucide-react"
+import { ArrowRight, Zap, Sparkles, CheckCircle, BookOpen, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+
+interface TrainingModule {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+interface UserProgress {
+  status: 'started' | 'interview_completed' | 'training_completed';
+  training_modules: TrainingModule[];
+  training_overview: string;
+}
 
 export default function StartPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const applicationId = searchParams.get("applicationId")
+
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<UserProgress | null>(null);
+
+  useEffect(() => {
+    async function fetchProgress() {
+      if (!applicationId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/user-progress?applicationId=${applicationId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status) {
+            setProgress(data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch progress:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProgress();
+  }, [applicationId]);
 
   const navigateToTraining = (path: string) => {
     const params = new URLSearchParams(searchParams.toString());
     router.push(`${path}?${params.toString()}`);
   }
+
+  const startTraining = () => {
+    // If we have modules, we might want to save them to session storage for the training page
+    // or the training page should also fetch them.
+    // For now, let's assume the training page uses session storage or we pass data via state/context.
+    // Given the existing architecture likely uses sessionStorage, let's re-save it just in case.
+    if (progress?.training_modules) {
+      sessionStorage.setItem('dynamicLearningData', JSON.stringify(progress.training_modules));
+      if (progress.training_overview) {
+        sessionStorage.setItem('dynamicLearningOverview', progress.training_overview);
+      }
+    }
+    navigateToTraining("/completion_distribution");
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-brand animate-spin" />
+      </div>
+    );
+  }
+
+  const showPersonalized = progress?.status === 'interview_completed' || progress?.status === 'training_completed';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-violet-50 relative overflow-hidden">
@@ -73,7 +139,7 @@ export default function StartPage() {
         </div>
 
         {/* Training Module - Magnesium Only */}
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto mb-16">
           <Card className="group relative overflow-hidden bg-white/90 backdrop-blur-sm hover:bg-white transition-all duration-500 border-2 border-brand/20 shadow-xl hover:shadow-2xl hover:-translate-y-2 hover:border-brand/40">
             {/* Top gradient bar */}
             <div className="h-2 bg-gradient-to-r from-brand via-brand-accent to-brand-light" />
@@ -108,6 +174,72 @@ export default function StartPage() {
           </Card>
         </div>
 
+        {/* Personalized Modules Section 
+        {showPersonalized && (
+          <div className="max-w-4xl mx-auto mt-16 border-t border-gray-200 pt-16">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center px-4 py-2 rounded-full bg-brand/10 text-brand text-sm font-medium mb-4 shadow-sm">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Dein persönlicher Lernplan
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900">Deine empfohlenen Lernmodule</h3>
+              <p className="text-gray-600 mt-2">Basierend auf deiner letzten Simulation haben wir diese Inhalte für dich zusammengestellt.</p>
+
+              {/* Overall Progress
+              <div className="max-w-md mx-auto mt-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>Gesamtfortschritt</span>
+                  <span>{Math.round((progress?.training_modules?.filter((m: any) => m.status === 'completed' || m.isCompleted).length || 0) / (progress?.training_modules?.length || 1) * 100)}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-brand transition-all duration-500"
+                    style={{ width: `${(progress?.training_modules?.filter((m: any) => m.status === 'completed' || m.isCompleted).length || 0) / (progress?.training_modules?.length || 1) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {progress?.training_modules?.map((module: any, idx) => {
+                const isCompleted = module.status === 'completed' || module.isCompleted;
+                return (
+                  <Card key={idx} className={`bg-white border-gray-200 shadow-sm hover:shadow-md transition-all ${isCompleted ? 'border-green-200 bg-green-50/30' : ''}`}>
+                    <CardTitle className="p-6 pb-2 text-lg font-semibold flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCompleted ? 'bg-green-100 text-green-600' : 'bg-brand/10 text-brand'}`}>
+                        {isCompleted ? <CheckCircle className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                      </div>
+                      {module.title}
+                    </CardTitle>
+                    <CardDescription className="px-6 pb-4">
+                      {module.description}
+                    </CardDescription>
+                    <div className="px-6 pb-6">
+                      <Button
+                        variant={isCompleted ? "ghost" : "outline"}
+                        className={`w-full ${isCompleted ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : 'border-brand/20 text-brand hover:bg-brand/5'}`}
+                        onClick={() => navigateToTraining("/learning-plan")}
+                      >
+                        {isCompleted ? "Wiederholen" : "Modul starten"}
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 text-center">
+              <Button
+                onClick={() => navigateToTraining("/learning-plan")}
+                className="bg-gradient-to-r from-brand to-brand-accent hover:from-brand-dark hover:to-brand text-white shadow-lg px-8 py-6 text-lg rounded-xl"
+              >
+                <BookOpen className="w-5 h-5 mr-2" />
+                Zum Lernplan
+              </Button>
+            </div>
+          </div>
+        )}
+      */}
         {/* Bottom info section */}
         <div className="mt-16 text-center">
           <div className="inline-flex items-center space-x-6 text-sm text-gray-500">

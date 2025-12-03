@@ -42,7 +42,14 @@ export async function updateSession(request: NextRequest) {
         !user &&
         !request.nextUrl.pathname.startsWith('/auth') &&
         !request.nextUrl.pathname.startsWith('/login') &&
-        request.nextUrl.pathname !== '/'
+        request.nextUrl.pathname !== '/' &&
+        !request.nextUrl.pathname.startsWith('/api') &&
+        !request.nextUrl.pathname.startsWith('/start') &&
+        !request.nextUrl.pathname.startsWith('/interview') &&
+        !request.nextUrl.pathname.startsWith('/preparation') &&
+        !request.nextUrl.pathname.startsWith('/completion_distribution') &&
+        !request.nextUrl.pathname.startsWith('/learning-plan') &&
+        !request.nextUrl.pathname.startsWith('/magnesium-info')
     ) {
         // no user, potentially redirect to login page
         const url = request.nextUrl.clone()

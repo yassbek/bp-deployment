@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   CheckCircle,
   XCircle,
@@ -22,7 +24,8 @@ import {
   Heart,
   Shield,
   AlertTriangle,
-  Plane
+  Plane,
+  Star
 } from "lucide-react"
 
 // ==================================================================
@@ -189,12 +192,42 @@ export default function CompletionPage() {
   // Transkript aus dem Interview laden
   const [interviewTranscript, setInterviewTranscript] = useState<string>('');
 
+  // Feedback State
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleFeedbackSubmit = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('feedback')
+        .insert({
+          rating,
+          comment: feedbackText,
+          user_id: user?.id || null // Optional: link to user if logged in
+        });
+
+      if (error) {
+        console.error("Error submitting feedback:", error);
+        // Optional: Show error message to user
+      } else {
+        console.log("Feedback submitted successfully");
+        setFeedbackSubmitted(true);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setShowSuccess(true), 300);
 
-    const loadData = () => {
+    const loadData = async () => {
       try {
-        // Dynamische Module laden
+        // 1. Try loading from sessionStorage
         const storedData = sessionStorage.getItem('dynamicLearningData');
         if (storedData) {
           const parsed = JSON.parse(storedData);
@@ -203,20 +236,40 @@ export default function CompletionPage() {
             setCompletedModules(Array(parsed.length).fill(false));
             setQuizResults([]);
             setIsLoadingModules(false);
+            return;
           }
-        } else {
-          // Fallback
-          setLearningModules(fallbackModules);
-          setCompletedModules(Array(fallbackModules.length).fill(false));
-          setQuizResults([]);
-          setIsLoadingModules(false);
         }
 
-        // Interview-Transkript laden (falls vorhanden)
-        const transcript = sessionStorage.getItem('interviewTranscript');
-        if (transcript) {
-          setInterviewTranscript(transcript);
+        // 2. If not in session, try fetching from API using applicationId
+        const params = new URLSearchParams(window.location.search);
+        const applicationId = params.get('applicationId');
+
+        if (applicationId) {
+          const res = await fetch(`/api/user-progress?applicationId=${applicationId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.training_modules && Array.isArray(data.training_modules)) {
+              setLearningModules(data.training_modules);
+              setCompletedModules(Array(data.training_modules.length).fill(false));
+              setQuizResults([]);
+              setIsLoadingModules(false);
+
+              // Also restore transcript if available
+              if (data.interview_transcript) {
+                // Convert transcript to string format if needed or store as is
+                // The component expects a string for 'interviewTranscript' but maybe we can adapt
+                // For now, let's just leave it empty or try to reconstruct if critical
+              }
+              return;
+            }
+          }
         }
+
+        // 3. Fallback
+        setLearningModules(fallbackModules);
+        setCompletedModules(Array(fallbackModules.length).fill(false));
+        setQuizResults([]);
+        setIsLoadingModules(false);
       } catch (e) {
         console.error("Fehler beim Laden der Daten:", e);
         setLearningModules(fallbackModules);
@@ -582,6 +635,73 @@ Bitte gib mir ein persönliches Feedback zu meiner Leistung. Was habe ich gut ge
                       <Send className="w-4 h-4" />
                     </Button>
                   </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* FEEDBACK FORM */}
+            {allModulesCompleted && (
+              <Card className="bg-white border-gray-200 shadow-sm mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    <span>Dein Feedback zur Simulation</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Wie hilfreich fandest du dieses Training? Deine Meinung hilft uns, besser zu werden.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {feedbackSubmitted ? (
+                    <div className="text-center py-6 bg-green-50 rounded-lg border border-green-100">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-green-900">Vielen Dank!</h3>
+                      <p className="text-green-700">Dein Feedback wurde erfolgreich gesendet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <span className="text-sm font-medium text-gray-700">Wie bewertest du die Simulation?</span>
+                        <div className="flex space-x-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setRating(star)}
+                              className="focus:outline-none transition-transform hover:scale-110"
+                            >
+                              <Star
+                                className={`w-8 h-8 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                  }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="feedback" className="text-sm font-medium text-gray-700">
+                          Was hat dir gefallen? Was können wir verbessern?
+                        </label>
+                        <Textarea
+                          id="feedback"
+                          placeholder="Dein Feedback..."
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleFeedbackSubmit}
+                          disabled={rating === 0}
+                          className="bg-brand hover:bg-brand/90"
+                        >
+                          Feedback senden
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

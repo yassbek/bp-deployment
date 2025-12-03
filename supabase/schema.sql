@@ -38,3 +38,21 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Create a table for user feedback
+create table feedback (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  comment text,
+  user_id uuid references auth.users
+);
+
+-- RLS for feedback
+alter table feedback enable row level security;
+
+create policy "Users can insert their own feedback." on feedback
+  for insert with check (auth.uid() = user_id OR user_id is null);
+
+create policy "Admins can view all feedback." on feedback
+  for select using (true); -- Simplified for now, ideally restrict to admins

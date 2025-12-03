@@ -1,46 +1,52 @@
-// app/api/user-progress/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const applicationId = searchParams.get('applicationId');
+
+  if (!applicationId) {
+    return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 });
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const applicationId = searchParams.get("applicationId");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('application_id', applicationId)
+      .single();
 
-    if (!applicationId) {
-      return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 });
+    if (error) {
+      // If not found, return null or specific status, but 404 is appropriate if we expect it to exist
+      // However, for the start page, "not found" might just mean "new user"
+      if (error.code === 'PGRST116') { // JSON object requested, multiple (or no) rows returned
+        return NextResponse.json({ status: 'new' });
+      }
+      console.error("Error fetching user progress:", error);
+      return NextResponse.json({ error: 'Failed to fetch progress' }, { status: 500 });
     }
 
-    const directusUrl = `${process.env.NEXT_PUBLIC_DIRECTUS_URL || process.env.DIRECTUS_URL}/items/applications/${applicationId}`;
-    const directusToken = process.env.NEXT_PUBLIC_DIRECTUS_TOKEN || process.env.DIRECTUS_STATIC_TOKEN;
+    // Fetch learning modules
+    const { data: modules, error: modulesError } = await supabase
+      .from('learning_modules')
+      .select('*')
+      .eq('application_id', applicationId)
+      .order('created_at', { ascending: true });
 
-    const directusRes = await fetch(directusUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${directusToken}`
-      },
-      // Cache-Kontrolle, um sicherzustellen, dass wir immer die neuesten Daten erhalten
-      cache: 'no-store' 
-    });
-
-    if (directusRes.status === 404) {
-        // Wenn die Anwendung nicht gefunden wird, ist es ein neuer Benutzer
-        return NextResponse.json({ progress: null }, { status: 404 });
+    if (modulesError) {
+      console.error("Error fetching learning modules:", modulesError);
     }
 
-    if (!directusRes.ok) {
-      const errorData = await directusRes.json();
-      console.error('Failed to fetch user progress from Directus:', errorData);
-      return NextResponse.json({ error: 'Failed to fetch user progress' }, { status: directusRes.status });
-    }
+    // Combine data
+    const responseData = {
+      ...data,
+      training_modules: modules || []
+    };
 
-    const data = await directusRes.json();
-    const current_interview_stage = data.data?.current_interview_stage || null; // Annahme: Feld heißt so
-
-    return NextResponse.json({ progress: { current_interview_stage } });
-
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Error in /api/user-progress:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    console.error("Server error fetching user progress:", error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

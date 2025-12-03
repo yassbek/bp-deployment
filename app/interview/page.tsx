@@ -63,7 +63,7 @@ export default function InterviewPage() {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     const params = new URLSearchParams(searchParams);
-    const nextPath = `/completion?${params.toString()}`;
+    const nextPath = `/completion_distribution?${params.toString()}`;
 
     if (!transcript || transcript.length === 0) {
       if (typeof window !== "undefined") {
@@ -74,10 +74,14 @@ export default function InterviewPage() {
     }
 
     try {
+      // Fallback applicationId if missing (e.g. manual navigation)
+      const appIdToUse = applicationId || crypto.randomUUID();
+      console.log("Saving interview for applicationId:", appIdToUse);
+
       const response = await fetch(`/api/analyze-transcript?type=pharmacy_magnesium&includeOverview=true`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, applicationId }),
+        body: JSON.stringify({ transcript, applicationId: appIdToUse }),
       });
 
       if (response.ok) {

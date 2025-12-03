@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   CheckCircle,
   XCircle,
@@ -21,7 +23,8 @@ import {
   Heart,
   Pill,
   ArrowLeft,
-  Home
+  Home,
+  Star
 } from "lucide-react"
 import Link from "next/link"
 
@@ -191,6 +194,35 @@ export default function CompletionPage() {
   // Refs
   const analysisTriggered = useRef(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Feedback State
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleFeedbackSubmit = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('feedback')
+        .insert({
+          rating,
+          comment: feedbackText,
+          user_id: user?.id || null // Optional: link to user if logged in
+        });
+
+      if (error) {
+        console.error("Error submitting feedback:", error);
+      } else {
+        console.log("Feedback submitted successfully");
+        setFeedbackSubmitted(true);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
 
   // ==================================================================
   // INITIALIZATION EFFECT
@@ -687,6 +719,73 @@ Nutzer fragt: ${userInput}`
                       </button>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* FEEDBACK FORM */}
+            {allModulesCompleted && (
+              <Card className="bg-white border-gray-200 shadow-sm mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    <span>Dein Feedback zur Simulation</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Wie hilfreich fandest du dieses Training? Deine Meinung hilft uns, besser zu werden.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {feedbackSubmitted ? (
+                    <div className="text-center py-6 bg-green-50 rounded-lg border border-green-100">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-green-900">Vielen Dank!</h3>
+                      <p className="text-green-700">Dein Feedback wurde erfolgreich gesendet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <span className="text-sm font-medium text-gray-700">Wie bewertest du die Simulation?</span>
+                        <div className="flex space-x-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setRating(star)}
+                              className="focus:outline-none transition-transform hover:scale-110"
+                            >
+                              <Star
+                                className={`w-8 h-8 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                  }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="feedback" className="text-sm font-medium text-gray-700">
+                          Was hat dir gefallen? Was können wir verbessern?
+                        </label>
+                        <Textarea
+                          id="feedback"
+                          placeholder="Dein Feedback..."
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleFeedbackSubmit}
+                          disabled={rating === 0}
+                          className="bg-brand hover:bg-brand/90"
+                        >
+                          Feedback senden
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

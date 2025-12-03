@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 // HINWEIS: 'next/navigation' wurde entfernt, da es in dieser Umgebung zu einem Kompilierungsfehler führt.
 // Die Navigation wird stattdessen mit Standard-Browserfunktionen gehandhabt.
 // import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { CheckCircle, Lightbulb, Target, Users, ArrowRight, Info, Pill, Zap, Brain } from "lucide-react"
+import { CheckCircle, Lightbulb, Users, ArrowRight, Info, Pill, Zap } from "lucide-react"
 
 export default function PreparationPage() {
   // const router = useRouter()
@@ -15,50 +15,39 @@ export default function PreparationPage() {
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({})
   const [isReady, setIsReady] = useState(false)
 
-  // Angepasste Inhalte basierend auf der "B-Vitamine.pdf"
+
+
+  // Angepasste Inhalte für Magnesiumcitrat 130
   const trainingAreas = [
     {
-      icon: Zap, // Icon für Energie
-      title: "Produktwissen & B-Komplex",
-      description: "Die Funktion der B-Vitamine als 'Familie' im Stoffwechsel.",
+      icon: Zap, // Icon für Energie/Wirkung
+      title: "Produktwissen & Wirkung",
+      description: "Dein Wissen über das Produkt und seine Vorteile.",
       topics: [
-        "Die 'Familie': Wasserlöslichkeit und Synergie-Effekte",
-        "B2 (Riboflavin) & Migräne-Prophylaxe (400mg Hochdosis)",
-        "Haut, Haare, Nägel: Biotin (B7) und Pantothensäure (B5)",
-        "Ausscheidung über die Niere (Hinweis: Gelbfärbung des Urins)",
+        "Wirkung auf Muskeln, Nerven und Energie",
+        "Vorteile der Citratform (Verfügbarkeit, Verträglichkeit)",
+        "Argumente: Reinheit und Apothekenqualität",
       ],
     },
     {
       icon: Users,
-      title: "Zielgruppen & Risikofaktoren",
-      description: "Wer hat einen erhöhten Bedarf?",
+      title: "Zielgruppen & Indikationen",
+      description: "Für welche Kunden das Produkt ideal ist.",
       topics: [
-        "Vegetarier & Veganer (kritisch: Vitamin B12)",
-        "Schwangere & Kinderwunsch (Folat/Folsäure)",
-        "Arzneimitteleinnahme: PPI (Säureblocker), Pille, Metformin",
-        "Chronischer Stress & Erschöpfung ('Burnout-Prävention')",
-      ],
-    },
-    {
-      icon: Brain, // Icon für Nerven/Psyche
-      title: "Beratungskompetenz",
-      description: "Wichtige Hinweise für das Kundengespräch.",
-      topics: [
-        "Aufklärung über harmlose Urin-Gelbfärbung (durch B2)",
-        "Einnahmehinweis: Zu oder nach der Mahlzeit (bessere Verträglichkeit)",
-        "Unterschied: Folsäure vs. aktives Folat (bei Enzymdefekten)",
-        "Kombinationsempfehlungen (z.B. mit Magnesium & Q10)",
+        "Kunden mit nächtlichen Wadenkrämpfen",
+        "Personen, die Diuretika einnehmen",
+        "Erhöhter Bedarf bei Sport und Stress",
       ],
     },
   ]
 
   const preparationChecklist = [
-    "Ich kann erklären, warum B-Vitamine oft im Komplex (als 'Familie') sinnvoll sind.",
-    "Ich kenne den Hinweis zur Gelbfärbung des Urins (durch Riboflavin) und kann Kunden beruhigen.",
-    "Ich weiß, dass PPI (Magenschutz) die B12-Aufnahme blockieren können.",
-    "Ich kenne die Dosierung von Vitamin B2 zur Migräne-Prophylaxe (400 mg).",
-    "Ich kann erklären, warum Veganer zwingend B12 supplementieren müssen.",
-    "Ich habe eine Empfehlung für Kunden mit Müdigkeit (B-Komplex + Magnesium + Q10) parat.",
+    "Ich kenne die Hauptwirkungen von Magnesium auf Muskeln, Nerven und Energie.",
+    "Ich kann die Vorteile der Citratform erklären (z.B. gute Verfügbarkeit).",
+    "Ich kenne die wichtigsten Zielgruppen (z.B. bei Wadenkrämpfen, Diuretika-Einnahme).",
+    "Ich bin vorbereitet, den Preisunterschied zu Drogerieprodukten zu begründen.",
+    "Ich kann auf den Einwand 'Ich ernähre mich gesund, das reicht doch' reagieren.",
+    "Ich habe eine klare Ein-Satz-Empfehlung für den Kunden parat.",
   ]
 
   const handleCheckboxChange = (index: number, checked: boolean) => {
@@ -80,12 +69,11 @@ export default function PreparationPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-5">
-              {/* Farbe Orange/Gelb passend zum Thema Energie/B-Vitamine */}
               <div className="w-16 h-16 bg-brand rounded-lg flex items-center justify-center">
                 <Pill className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Beratungssimulation: B-Vitamine & Komplex</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Beratungssimulation: Magnesiumcitrat 130</h1>
                 <p className="text-gray-600">Bereite dich auf das Kundengespräch vor</p>
               </div>
             </div>
@@ -95,6 +83,11 @@ export default function PreparationPage() {
 
       {/* Hauptinhalt */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* DEBUG BANNER */}
+        <div className="bg-yellow-200 p-2 mb-4 text-center font-bold text-red-600">
+          DEBUG: Page Loaded. isReady = {isReady ? "TRUE" : "FALSE"}
+        </div>
+
         {/* Einleitung */}
         <Card className="mb-8">
           <CardHeader>
@@ -103,12 +96,12 @@ export default function PreparationPage() {
               <span>Über diese Simulation</span>
             </CardTitle>
             <CardDescription>
-              Diese Simulation trainiert deine Beratungskompetenz zu B-Vitaminen, von Energielosigkeit bis zu spezifischen Indikationen wie Migräne oder Schwangerschaft.
+              Diese Simulation trainiert dich für ein erfolgreiches Beratungsgespräch zu Magnesiumcitrat 130.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">
-              In dieser Simulation üben wir, den richtigen Bedarf für B-Vitamine zu erkennen (z.B. durch Medikamenten-Checks bei PPI-Einnahme) und die Vorteile eines B-Komplexes zu erklären. Du wirst lernen, Kunden proaktiv auf Aspekte wie die Urinverfärbung hinzuweisen und Zusatzverkäufe (Co-Enzym Q10, Magnesium) logisch herzuleiten.
+              In dieser Simulation üben wir, die Vorteile von Magnesiumcitrat 130 aktiv zu kommunizieren, passende Kundengruppen zu erkennen und überzeugend auf typische Fragen und Einwände zu reagieren. Ziel ist es, dass du dich im HV-Alltag sicher fühlst, das Produkt proaktiv zu empfehlen.
             </p>
 
             <div className="bg-brand/10 border border-brand/20 rounded-lg p-4">
@@ -119,8 +112,8 @@ export default function PreparationPage() {
                   <ul className="text-sm text-gray-800 space-y-1">
                     <li>• Dauer: 3-5 Minuten</li>
                     <li>• Format: Gesprächssimulation mit einem KI-Kunden</li>
-                    <li>• Szenarien: Stress/Müdigkeit, Veganismus oder Migräne</li>
-                    <li>• Ziel: Sicherheit in der Empfehlung und Aufklärung über Wechselwirkungen.</li>
+                    <li>• Sprache: Deutsch</li>
+                    <li>• Ziel: Das Gespräch wird zur Verbesserung deiner Beratungsfähigkeiten analysiert.</li>
                   </ul>
                 </div>
               </div>
@@ -131,7 +124,7 @@ export default function PreparationPage() {
         {/* Themenbereiche */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Schwerpunkte der Beratung</h2>
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-2 gap-6">
             {trainingAreas.map((area, index) => {
               const Icon = area.icon
               return (
@@ -180,8 +173,8 @@ export default function PreparationPage() {
                   <label
                     htmlFor={`checklist-${index}`}
                     className={`text-sm cursor-pointer ${checkedItems[index]
-                        ? "text-gray-900 line-through decoration-brand"
-                        : "text-gray-700"
+                      ? "text-gray-900 line-through decoration-brand"
+                      : "text-gray-700"
                       }`}
                   >
                     {item}
@@ -197,8 +190,31 @@ export default function PreparationPage() {
                   <p className="font-medium text-green-900">Du bist startklar!</p>
                 </div>
                 <p className="text-sm text-green-700 mt-1">
-                  Alle Punkte der Checkliste sind erledigt. Du kannst jetzt deine Beratungssimulation zu B-Vitaminen starten.
+                  Alle Punkte der Checkliste sind erledigt. Du kannst jetzt deine Beratungssimulation starten.
                 </p>
+              </div>
+            )}
+
+            {!isReady && (
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3">
+                    <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-blue-900">Unsicher bei einigen Punkten?</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Frische dein Wissen auf, bevor du startest. Wir haben eine kompakte Übersicht für dich vorbereitet.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="bg-white text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-800 shrink-0"
+                    onClick={() => window.location.href = "/magnesium-info"}
+                  >
+                    Zur Wissens-Übersicht
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
