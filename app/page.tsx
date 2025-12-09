@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Cookies from 'js-cookie';
 import { v4 as uuidv4 } from 'uuid';
 
-// Zeigt eine Ladeanimation, während der Fortschritt geprüft und weitergeleitet wird.
+// Shows a loading animation while checking progress and redirecting.
 function LoadingOverlay({ text }: { text: string }) {
   return (
     <div className="fixed inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50">
@@ -26,28 +26,23 @@ function AppView() {
 
   useEffect(() => {
     const initializeSessionAndRedirect = async () => {
+      // User is authenticated (middleware ensures this)
+      // Now handle the application session
       let currentApplicationId = Cookies.get('applicationId');
 
       if (!currentApplicationId) {
-        // --- NEUER BENUTZER ---
-        // Generiere eine neue ID, speichere sie im Cookie und leite direkt zu /start weiter.
+        // New session - generate applicationId
         currentApplicationId = uuidv4();
         Cookies.set('applicationId', currentApplicationId, { expires: 7, secure: process.env.NODE_ENV === 'production' });
-
-        // Direkte Weiterleitung zur Startseite
-        router.replace(`/start?applicationId=${currentApplicationId}`);
-
-      } else {
-        // --- WIEDERKEHRENDER BENUTZER ---
-        // Für Lilavita: Leite immer zur Startseite, da wir nur Magnesium haben
-        router.replace(`/start?applicationId=${currentApplicationId}`);
       }
+
+      // Redirect to start page with applicationId
+      router.replace(`/start?applicationId=${currentApplicationId}`);
     };
 
     initializeSessionAndRedirect();
   }, [router]);
 
-  // Die Komponente zeigt nur noch den Ladebildschirm an, bis die Weiterleitung abgeschlossen ist.
   return (
     <div className="relative w-full min-h-screen bg-purple-50">
       {isLoading && <LoadingOverlay text="Lade Lernplattform" />}

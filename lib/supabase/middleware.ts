@@ -2,6 +2,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Routes that don't require authentication
+const publicRoutes = [
+    '/auth/login',
+    '/auth/signup',
+    '/api/type-form-webhook', // webhooks need to be public
+]
+
+// Check if a path matches any public route
+function isPublicRoute(pathname: string): boolean {
+    return publicRoutes.some(route => pathname.startsWith(route))
+}
+
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
@@ -38,22 +50,19 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        request.nextUrl.pathname !== '/' &&
-        !request.nextUrl.pathname.startsWith('/api') &&
-        !request.nextUrl.pathname.startsWith('/start') &&
-        !request.nextUrl.pathname.startsWith('/interview') &&
-        !request.nextUrl.pathname.startsWith('/preparation') &&
-        !request.nextUrl.pathname.startsWith('/completion_distribution') &&
-        !request.nextUrl.pathname.startsWith('/learning-plan') &&
-        !request.nextUrl.pathname.startsWith('/magnesium-info')
-    ) {
-        // no user, potentially redirect to login page
+    const pathname = request.nextUrl.pathname
+
+    // If user is not authenticated and trying to access a protected route
+    if (!user && !isPublicRoute(pathname)) {
         const url = request.nextUrl.clone()
         url.pathname = '/auth/login'
+        return NextResponse.redirect(url)
+    }
+
+    // If user is authenticated and trying to access auth pages, redirect to home
+    if (user && (pathname === '/auth/login' || pathname === '/auth/signup')) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
         return NextResponse.redirect(url)
     }
 

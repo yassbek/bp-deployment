@@ -4,7 +4,8 @@ import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Zap, Sparkles, CheckCircle, BookOpen, Loader2 } from "lucide-react"
+import { ArrowRight, Zap, Sparkles, CheckCircle, BookOpen, Loader2, LogOut } from "lucide-react"
+import { signout } from "@/app/auth/actions"
 import { useEffect, useState } from "react"
 
 interface TrainingModule {
@@ -110,9 +111,22 @@ export default function StartPage() {
                 <p className="text-xs text-gray-500">Apotheken-Coaching</p>
               </div>
             </div>
-            <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
-              <Sparkles className="w-4 h-4 text-brand" />
-              <span>Interaktive Beratungssimulation</span>
+            <div className="flex items-center space-x-4">
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
+                <Sparkles className="w-4 h-4 text-brand" />
+                <span>Interaktive Beratungssimulation</span>
+              </div>
+              <form action={signout}>
+                <Button 
+                  type="submit"
+                  variant="ghost" 
+                  size="sm"
+                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Abmelden
+                </Button>
+              </form>
             </div>
           </div>
         </div>
