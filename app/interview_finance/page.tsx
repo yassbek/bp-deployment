@@ -15,7 +15,7 @@ export default function InterviewPage() {
   const applicationId = searchParams.get("applicationId");
 
   const [isConnected, setIsConnected] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(5 * 60); // 5 Minuten für die Simulation
+  const [timeLeft, setTimeLeft] = useState(10 * 60); // 10 Minuten für die Simulation
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [endSignal, setEndSignal] = useState(0);
   const [transcript, setTranscript] = useState<Array<{ role: "user" | "ai"; text: string; timestamp: string }>>([]);

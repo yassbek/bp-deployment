@@ -1,16 +1,35 @@
 
-import { login } from '../actions'
+'use client'
 
-export default function LoginPage() {
+import { login } from '../actions'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+
+function LoginForm() {
+    const searchParams = useSearchParams()
+    const error = searchParams.get('error')
+
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
             <div className="w-full max-w-md space-y-8 rounded-lg border border-border bg-card p-8 shadow-lg">
                 <div className="text-center">
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">
-                        Sign in to your account
+                        Anmelden
                     </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Welcome back to the Voice Agent Platform
+                        Willkommen zurück bei der Voice Agent Platform
+                    </p>
+                </div>
+
+                {error && (
+                    <div className="rounded-md bg-red-50 border border-red-200 p-4">
+                        <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                )}
+
+                <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+                    <p className="text-sm text-amber-800">
+                        <strong>Hinweis:</strong> Nur E-Mail-Adressen mit <span className="font-mono font-semibold">@baeren-apotheke.de</span> sind erlaubt.
                     </p>
                 </div>
 
@@ -21,7 +40,7 @@ export default function LoginPage() {
                                 htmlFor="email"
                                 className="block text-sm font-medium text-foreground"
                             >
-                                Email address
+                                E-Mail-Adresse
                             </label>
                             <input
                                 id="email"
@@ -29,8 +48,10 @@ export default function LoginPage() {
                                 type="email"
                                 autoComplete="email"
                                 required
+                                pattern=".*@baeren-apotheke\.de$"
+                                title="Bitte verwende Deine @baeren-apotheke.de E-Mail-Adresse"
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm"
-                                placeholder="you@example.com"
+                                placeholder="vorname.nachname@baeren-apotheke.de"
                             />
                         </div>
 
@@ -39,7 +60,7 @@ export default function LoginPage() {
                                 htmlFor="password"
                                 className="block text-sm font-medium text-foreground"
                             >
-                                Password
+                                Passwort
                             </label>
                             <input
                                 id="password"
@@ -58,23 +79,31 @@ export default function LoginPage() {
                             formAction={login}
                             className="group relative flex w-full justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
                         >
-                            Sign in
+                            Anmelden
                         </button>
                     </div>
                 </form>
 
                 <div className="text-center text-sm">
                     <p className="text-muted-foreground">
-                        Don&apos;t have an account?{' '}
+                        Noch kein Konto?{' '}
                         <a
                             href="/auth/signup"
                             className="font-medium text-brand hover:text-brand-dark"
                         >
-                            Sign up
+                            Registrieren
                         </a>
                     </p>
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Laden...</div>}>
+            <LoginForm />
+        </Suspense>
     )
 }
