@@ -43,7 +43,7 @@ export async function signup(formData: FormData) {
     const fullName = formData.get('fullName') as string
 
     if (!isEmailAllowed(email)) {
-        redirect('/auth/signup?error=Nur E-Mail-Adressen mit @baeren-apotheke.de sind erlaubt')
+        redirect('/auth/signup?error=Nur E-Mail-Adressen mit @baeren-apotheken.de sind erlaubt')
     }
 
     const { error } = await supabase.auth.signUp({

@@ -29,7 +29,7 @@ function SignupForm() {
 
                 <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
                     <p className="text-sm text-amber-800">
-                        <strong>Hinweis:</strong> Nur E-Mail-Adressen mit <span className="font-mono font-semibold">@baeren-apotheke.de</span> sind erlaubt.
+                        <strong>Hinweis:</strong> Nur E-Mail-Adressen mit <span className="font-mono font-semibold">@baeren-apotheken.de</span> sind erlaubt.
                     </p>
                 </div>
 
@@ -67,9 +67,9 @@ function SignupForm() {
                                 autoComplete="email"
                                 required
                                 pattern=".*@baeren-apotheke\.de$"
-                                title="Bitte verwende Deine @baeren-apotheke.de E-Mail-Adresse"
+                                title="Bitte verwende Deine @baeren-apotheken.de E-Mail-Adresse"
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm"
-                                placeholder="vorname.nachname@baeren-apotheke.de"
+                                placeholder="vorname.nachname@baeren-apotheken.de"
                             />
                         </div>
 
