@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/server'
 
-const ALLOWED_EMAIL_DOMAIN = '@baeren-apotheke.de'
+const ALLOWED_EMAIL_DOMAIN = '@baeren-apotheken.de'
 
 function isEmailAllowed(email: string): boolean {
     return email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN)
@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
     const password = formData.get('password') as string
 
     if (!isEmailAllowed(email)) {
-        redirect('/auth/login?error=Nur E-Mail-Adressen mit @baeren-apotheke.de sind erlaubt')
+        redirect('/auth/login?error=Nur E-Mail-Adressen mit @baeren-apotheken.de sind erlaubt')
     }
 
     const { error } = await supabase.auth.signInWithPassword({
