@@ -66,7 +66,7 @@ function SignupForm() {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                pattern=".*@baeren-apotheke\.de$"
+                                pattern=".*@baeren-apotheken\.de$"
                                 title="Bitte verwende Deine @baeren-apotheken.de E-Mail-Adresse"
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm"
                                 placeholder="vorname.nachname@baeren-apotheken.de"
